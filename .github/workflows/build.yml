@@ -32,7 +32,7 @@ jobs:
           path: "builds"
 
       - name: Clean old builds
-        run: rm -f $GITHUB_WORKSPACE/builds/*.cs3 || true
+        run: rm -f $GITHUB_WORKSPACE/builds/*.cs3 $GITHUB_WORKSPACE/builds/*.jar || true
 
       # AGP 8.13.x requires JDK 17. Do not bump without bumping AGP.
       - name: Setup JDK 17
@@ -41,29 +41,36 @@ jobs:
           distribution: "temurin"
           java-version: 17
 
+      # NOT v3: the v3 default installs the removed "tools" SDK package
+      # (android-actions issue #537) and its cmdline-tools URL 404s (#536).
+      # v4 uses the maintained cmdline-tools path and node24.
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
+      # The source is checked out into ./src, so every path below is relative
+      # to the workspace root and must point into it.
       - name: Verify provider categories
-        run: ./scripts/verify-provider-categories.sh
+        working-directory: src
+        run: bash ./scripts/verify-provider-categories.sh
 
       - name: Run unit tests
-        run: |
-          cd $GITHUB_WORKSPACE/src
-          ./gradlew testReleaseUnitTest
+        working-directory: src
+        run: ./gradlew testReleaseUnitTest
 
       - name: Build plugins
+        working-directory: src
         run: |
-          cd $GITHUB_WORKSPACE/src
           ./gradlew make makePluginsJson
-          cp **/build/*.cs3 $GITHUB_WORKSPACE/builds
-          cp build/plugins.json $GITHUB_WORKSPACE/builds
+          find . -maxdepth 3 -path "*/build/*.cs3" -exec cp {} "$GITHUB_WORKSPACE/builds/" \;
+          cp build/plugins.json "$GITHUB_WORKSPACE/builds/"
 
       - name: Push builds
+        working-directory: builds
         run: |
-          cd $GITHUB_WORKSPACE/builds
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add .
-          git commit --amend -m "Build $GITHUB_SHA" || exit 0
-          git push --force
+          git commit -m "Build $GITHUB_SHA" || echo "nothing to commit"
+          git push --force origin HEAD:builds

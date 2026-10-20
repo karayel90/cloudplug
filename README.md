@@ -14,53 +14,33 @@ TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları) destekl
 
 ## ⚙️ Kurulum
 
-Uygulama → Ayarlar → Uzantılar → Depo Ekle kısmına aşağıdaki bağlantıyı yapıştırın
-(kendi adınızı yazmanız zorunda değil, sadece bağlantıyı yazın):
+Uygulama → Ayarlar → Uzantılar → Depo Ekle kısmına şu bağlantıyı yapıştırın:
 
 ```
-https://raw.githubusercontent.com/OWNER/cloudstream-extensions-tr/refs/heads/master/repo.json
+https://raw.githubusercontent.com/karayel90/cloudplug/refs/heads/master/repo.json
 ```
 
-## 🚀 Yayınlamadan önce (2 dakika)
+Eklentiler `builds` branch'inden dağıtılır; CI her push'ta `.cs3` dosyalarını ve
+`plugins.json`'ı oraya yazar.
 
-Depoyu kendi hesabınıza taşımak için **4 yerde** placeholder değiştirmeniz gerekiyor.
-Hepsini tek komutla bulabilirsiniz:
+### Depoyu güncelleme
+
+Depo `karayel90/cloudplug` altındadır. Değişiklik yapmak için:
 
 ```bash
-grep -rn "GITHUB_OWNER\|GITHUB_REPO" . --include="*.kts" --include="*.json"
+git clone https://github.com/karayel90/cloudplug.git
+cd cloudplug
+./gradlew TabiiProvider:make      # yerel derleme
+./gradlew testReleaseUnitTest     # testler
 ```
 
-| Dosya | Satır | Değiştirilecek |
-|---|---|---|
-| `repo.json` | 6 | `GITHUB_OWNER` → kullanıcı adınız, `GITHUB_REPO` → repo adınız |
-| `build.gradle.kts` | 30 | `setRepo(...)` içindeki aynı iki değer |
-| `build.gradle.kts` | 31 | `authors = listOf("GITHUB_OWNER")` |
-| `TabiiProvider/build.gradle.kts` | 14 | `authors = listOf("GITHUB_OWNER")` |
+Push'tan sonra CI otomatik olarak `builds` branch'ini günceller.
 
-> `GITHUB_REPOSITORY` ortam değişkeni CI'da otomatik geldiği için, `setRepo(...)`
-> satırındaki yedek değer yalnızca **yerelde** üretilen `plugins.json` için
-> önemlidir. Dağıtım için daima CI'ın ürettiği `builds/plugins.json` kullanılmalı.
-
-### GitHub'a yükleme
-
-```bash
-git init
-git add -A
-git commit -m "Türkçe Cloudstream eklentileri: tabii canlı TV provider"
-git remote add origin https://github.com/<KULLANICI>/<REPO>.git
-git push -u origin master
-```
-
-Ardından GitHub'da **`builds` branch'ini oluşturun** (boş bir commit ile).
-CI her push'ta `.cs3` dosyalarını ve `plugins.json`'ı bu branch'e yazar; o
-branch olmadan CI'ın `checkout ref: builds` adımı başarısız olur.
-
-CI ilk çalıştıktan sonra kullanıcılar şu adresi CS3 → Ayarlar → Uzantılar →
-Depo Ekle kısmına yapıştırarak eklentiyi kurar:
-
-```
-https://raw.githubusercontent.com/<KULLANICI>/<REPO>/refs/heads/master/repo.json
-```
+> `build.gradle.kts` içindeki `setRepo(...)` çağrısı, CI'da `GITHUB_REPOSITORY`
+> ortam değişkeni sayesinde doğru repo adresini kullanır. Yedek değer
+> (`https://github.com/karayel90/cloudplug`) yalnızca **yerelde** üretilen
+> `plugins.json` için geçerlidir; dağıtım için daima CI'ın ürettiği
+> `builds/plugins.json` kullanılmalı.
 
 ## 🧩 Eklentiler
 

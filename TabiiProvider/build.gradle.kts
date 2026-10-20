@@ -11,7 +11,7 @@ cloudstream {
     // All of these properties are optional, you can safely remove them
 
     description = "tabii canlı TV kanalları: TRT 1, TRT 2, TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi, TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları."
-    authors = listOf("GITHUB_OWNER")
+    authors = listOf("karayel90")
 
     /**
      * Status int as the following:
