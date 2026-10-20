@@ -17,7 +17,7 @@ TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları) destekl
 Uygulama → Ayarlar → Uzantılar → Depo Ekle kısmına şu bağlantıyı yapıştırın:
 
 ```
-https://raw.githubusercontent.com/karayel90/cloudplug/refs/heads/master/repo.json
+https://raw.githubusercontent.com/karayel90/cloudplug/refs/heads/main/repo.json
 ```
 
 Eklentiler `builds` branch'inden dağıtılır; CI her push'ta `.cs3` dosyalarını ve
