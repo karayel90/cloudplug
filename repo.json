@@ -1,0 +1,8 @@
+{
+    "name": "Türkçe Cloudstream Eklentileri",
+    "description": "Cloudstream 3 plugin repository for Turkish content",
+    "manifestVersion": 1,
+    "pluginLists": [
+      "https://raw.githubusercontent.com/GITHUB_OWNER/GITHUB_REPO/refs/heads/builds/plugins.json"
+    ]
+}
