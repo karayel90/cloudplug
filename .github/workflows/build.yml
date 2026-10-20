@@ -51,6 +51,10 @@ jobs:
 
       # The source is checked out into ./src, so every path below is relative
       # to the workspace root and must point into it.
+      - name: Make gradlew executable
+        working-directory: src
+        run: chmod +x gradlew
+
       - name: Verify provider categories
         working-directory: src
         run: bash ./scripts/verify-provider-categories.sh
