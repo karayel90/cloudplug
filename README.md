@@ -100,4 +100,4 @@ modülüne enjekte edilir.
 
 ## 📄 Lisans
 
-[GNU GPL v3](LICENSE) veya üzeri..
+[GNU GPL v3](LICENSE) veya üzeri.
