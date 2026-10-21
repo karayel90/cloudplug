@@ -1,0 +1,11 @@
+# Shell scriptler CI'da Linux'ta calisiyor: satir sonlari LF olmali.
+*.sh text eol=lf
+
+# gradlew calistirilabilir olmali ve satir sonlari LF olmali.
+gradlew text eol=lf
+
+# Kaynak dosyalarda satir sonlari buyuk/small farkini normalize et.
+*.kt text
+*.kts text
+*.md text
+*.json text

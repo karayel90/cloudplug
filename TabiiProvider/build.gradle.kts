@@ -1,6 +1,10 @@
 // use an integer for version numbers
 version = 1
 
+android {
+    namespace = "tr.tabii"
+}
+
 dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
