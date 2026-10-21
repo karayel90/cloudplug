@@ -33,7 +33,7 @@ subprojects {
 
     android {
         // Not: `namespace` her modülün kendi build.gradle.kts dosyasında
-        // tanımlanır (ör. tr.tabii) — tek modül varsayılanını
+        // tanımlanır (tr.tabii, tr.trlive) — tek modül varsayılanını
         // kullanmak ikinci bir provider eklenince çakışma yaratıyor.
 
         defaultConfig {
