@@ -6,7 +6,6 @@ set -euo pipefail
 
 declare -A expected=(
     [TabiiProvider]='Live'
-    [TrLiveProvider]='Live'
 )
 
 failures=0
