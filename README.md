@@ -7,8 +7,9 @@
 [Cloudstream 3](https://github.com/recloudstream/cloudstream) için Türkçe içerik
 sağlayan eklenti deposu. **tabii** canlı TV kanalları (TRT 1, TRT 2,
 TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi,
-TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları) ve
-**Ace Stream** (P2P) kanalları (beIN SPORTS, Setanta) destekleniyor.
+TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları),
+**Ace Stream** (P2P) kanalları (beIN SPORTS, Setanta) ve **TR Kanalları**
+(TV8, ATV, Star TV, DMAX) destekleniyor.
 
 * [Cloudstream deposu](https://github.com/recloudstream/cloudstream)
 * [Cloudstream Wiki](https://cloudstream.miraheze.org/wiki/Main_Page)
@@ -45,10 +46,14 @@ Push'tan sonra CI otomatik olarak `builds` branch'ini günceller.
 
 ## 🧩 Eklentiler
 
-| Eklenti | Açıklama | Türler |
+Depoda **tek bir eklenti** (`tabii`) var. Eklenti içinde iki sağlayıcı
+kayıtlı; CS3 ana sayfasında iki sekme olarak görünürler:
+
+| Sağlayıcı | Kanal grubu | Türler |
 |---|---|---|
 | **tabii** | tabii.com canlı TV kanalları | Live |
 | **tabii** | Ace Stream (P2P) kanalları: beIN SPORTS, Setanta | Live |
+| **TR Kanalları** | TV8, ATV, Star TV (STARTV), DMAX canlı yayın kanalları | Live |
 
 ## 🔌 Nasıl çalışıyor?
 
@@ -68,6 +73,49 @@ DRM'li (FairPlay / Widevine) kayıtlar atlanır.
 
 Abonelik gerektiren tabii kanalları için CS3'ün provider credentials alanına
 tabii oturum çerezinizi yazarsanız isteklerde o çerez gönderilir.
+
+### TR Kanalları (TV8, ATV, Star TV, DMAX)
+
+Bu dört yayıncı yayınlarını **Daion CDN** üzerinden HLS olarak sunar. Adres
+şablonu kanal başına sabittir:
+
+```
+https://<cdn>/<kanal>/<kanal>.m3u8?app=<app-uuid>&ce=3
+```
+
+Master playlist her istekte kendini yenileyen `sid` jetonları üretir; kanal
+listesi tek bir `app` kimliğiyle sabit olduğu için eklenti listeyi bir kez
+okuyup sabit tutar.
+
+| Kanal | Manifest |
+|---|---|
+| TV8 | `tv8.daioncdn.net/tv8/tv8.m3u8` |
+| ATV | `trkvz.daioncdn.net/atv/atv.m3u8` |
+| Star TV | `dogus.daioncdn.net/startv/startv.m3u8` |
+| DMAX | `dogus.daioncdn.net/dmax/dmax.m3u8` |
+
+#### ATV: "secure token" gereksinimi
+
+ATV'in yayın adresi kendiliğinden oynatılamaz; adres yayıncının kendi
+servisinde imzalanmalıdır. Eklenti oynatma anında şu adresi çağırır:
+
+```
+GET https://securevideotoken.tmgrup.com.tr/webtv/secure?<rastgele>&url=<imzalanacak adres>
+X-isApp: false
+X-Rand: <epoch ms>
+Origin: https://www.atv.com.tr
+Referer: https://www.atv.com.tr/
+```
+
+Yanıttaki `Url` alanı `st` (başlangıç jetonu) ve `e` (bitiş zamanı)
+parametreleri eklenmiş nihai adresi verir. Jetonun ömrü ~11,5 saattir, bu
+yüzden her oynatmada tazelenir.
+
+> **`Origin` ve `Referer` başlıkları zorunludur** — bu ikisi olmadan servis
+> `403` döner.
+
+CDN istekleri `Referer` başlığı olmadan da reddedilir; eklenti her kanalın
+kendi sitesini `Referer` olarak gönderir.
 
 ### Ace Stream kanalları
 
@@ -122,6 +170,14 @@ için şu dosyalar gerekir:
 
 Ortak kod `common/src/main/kotlin` altındadır ve otomatik olarak her provider
 modülüne enjekte edilir.
+
+Bir modül birden fazla provider barındırabilir: her `MainAPI` eklenti giriş
+noktasında `registerMainAPI(...)` ile kaydedilir. Mevcut modül iki sağlayıcı
+barındırıyor (`TabiiProvider` ve `TrLiveProvider`).
+
+> Modül ya da eklenti adı değiştirilmemelidir. CS3 kurulu eklentileri
+> `internalName` ile tanır; ad değişirse eski sürüm kullanıcıda kalır ve
+> yeni sürüm yan yana kurulur.
 
 ## 📄 Lisans
 

@@ -1,5 +1,5 @@
 // use an integer for version numbers
-version = 3
+version = 4
 
 android {
     namespace = "tr.tabii"
@@ -14,7 +14,7 @@ cloudstream {
     language = "tr"
     // All of these properties are optional, you can safely remove them
 
-    description = "tabii canlı TV kanalları: TRT 1, TRT 2, TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi, TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları."
+    description = "Türkiye'nin canlı TV kanalları: tabii kanalları (TRT 1, TRT 2, TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi, TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba), Ace Stream (P2P) kanalları (beIN SPORTS, Setanta) ve TR Kanalları (TV8, ATV, Star TV, DMAX)."
     authors = listOf("karayel90")
 
     /**
