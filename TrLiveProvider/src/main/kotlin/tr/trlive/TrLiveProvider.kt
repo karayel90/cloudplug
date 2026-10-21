@@ -51,7 +51,11 @@ class TrLiveProvider : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse {
-        val channel = TrLiveChannels.byId(url)
+        val channel = TrLiveChannels.byPageUrl(url)
+            ?: TrLiveChannels.byId(url)
+            // Cloudstream, göreli adresleri `mainUrl + "/" + adres` biçiminde
+            // birleştirebiliyor; son çare olarak adresin son parçasına bakıyoruz.
+            ?: TrLiveChannels.byId(url.substringAfterLast('/').substringBefore('?'))
             ?: throw ErrorLoadingException("Kanal bulunamadı: $url")
 
         // ATV gibi kanallarda yayın adresi imzalanmadan açılmıyor; jetonu
@@ -89,7 +93,9 @@ class TrLiveProvider : MainAPI() {
     private fun TrLiveChannel.toSearchResult(): SearchResponse =
         newLiveSearchResponse(
             name,
-            id,
+            // Sonuç adresi mutlak olmalı: Cloudstream göreli adresleri
+            // `mainUrl + "/" + adres` biçimine çeviriyor.
+            pageUrl,
             TvType.Live,
         ) {
             posterUrl = logo

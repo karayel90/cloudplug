@@ -104,6 +104,9 @@ object TrLiveChannels {
     /** Kimliğe göre kanal bulur. */
     fun byId(id: String): TrLiveChannel? = ALL.firstOrNull { it.id == id }
 
+    /** Kanalın canlı yayın sayfasına göre kanal bulur. */
+    fun byPageUrl(pageUrl: String): TrLiveChannel? = ALL.firstOrNull { it.pageUrl == pageUrl }
+
     /**
      * Oynatma adresinden kanalı bulur.
      *

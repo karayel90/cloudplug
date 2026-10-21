@@ -45,6 +45,15 @@ class TrLiveChannelsTest {
     }
 
     @Test
+    fun `sayfa adresiyle kanal bulma`() {
+        // Cloudstream arama sonucundaki mutlak adresi load() fonksiyonuna
+        // oldugu gibi geçiriyor.
+        for (c in TrLiveChannels.ALL) {
+            assertEquals(c, TrLiveChannels.byPageUrl(c.pageUrl))
+        }
+    }
+
+    @Test
     fun `yayin adresinden kanal geri cozuluyor`() {
         val atv = TrLiveChannels.byId("atv")!!
         // Gerçek oynatıcı imzalı adresi döndürür; adres yine de manifest ile başlar.
