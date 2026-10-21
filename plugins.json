@@ -21,10 +21,10 @@
     },
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=startv.com.tr&sz=%size%",
-        "fileHash": "sha256-ecb55029b68c01024407c04ef6f3a32e09de125443aa875e11eddb8b24f129ef",
+        "fileHash": "sha256-944a55a1872919cde6bc3c157c3123984b8b2b2ed7113dddbe12033219837018",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/karayel90/cloudplug",
-        "fileSize": 14746,
+        "fileSize": 14915,
         "status": 1,
         "language": "tr",
         "authors": [
