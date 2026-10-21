@@ -3,6 +3,7 @@ package tr.tabii
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.lagradost.cloudstream3.app
+import kotlinx.coroutines.delay
 import java.net.URLEncoder
 
 /**
@@ -58,6 +59,12 @@ object AceStream {
      * tanindigi degisebiliyor.
      */
     private val PLAYBACK_PARAMS = listOf("content_id", "id", "infohash")
+
+    /** Cozumleme isteginin kac kez denenecegi. */
+    private const val PLAYBACK_ATTEMPTS = 3
+
+    /** Yeniden denemeler arasindaki bekleme (ms). */
+    private const val PLAYBACK_RETRY_DELAY_MS = 700L
 
     /** Icerik kimligi: 40 haneli onaltilik ozet. */
     private val CONTENT_ID = Regex("\\A[0-9a-fA-F]{40}\\z")
@@ -183,11 +190,23 @@ object AceStream {
         var last = AceStreamPlayback(null, null, "")
         for (param in PLAYBACK_PARAMS) {
             val url = "$ENGINE_BASE$MANIFEST_PATH?format=json&$param=$contentId"
-            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
-            parsePlaybackUrl(body)?.let { return AceStreamPlayback(it, null, body) }
-            parseEngineError(body)?.let { return AceStreamPlayback(null, it, body) }
-            // JSON degilse motor format=json'i desteklemiyor olabilir.
-            last = AceStreamPlayback(null, null, body)
+            // Motor yayini ilk denemede hazirlayamiyor olabiliyor; "kafasa gore
+            // aciliyor" davranisi bu yaris kaynakli. Birkac kez yeniden
+            // deneniyor.
+            for (attempt in 0 until PLAYBACK_ATTEMPTS) {
+                if (attempt > 0) delay(PLAYBACK_RETRY_DELAY_MS)
+                val body = runCatching { app.get(url).text }.getOrNull() ?: continue
+                parsePlaybackUrl(body)?.let { return AceStreamPlayback(it, null, body) }
+                val error = parseEngineError(body)
+                if (error != null) {
+                    // Hata sabitse yeniden denemek anlamli degil.
+                    last = AceStreamPlayback(null, error, body)
+                    break
+                }
+                // JSON degilse motor format=json'i desteklemiyor olabilir.
+                last = AceStreamPlayback(null, null, body)
+            }
+            if (last.url != null || last.engineError != null) return last
         }
         return last
     }
@@ -199,11 +218,22 @@ object AceStream {
      * ```json
      * {"error":{"message":"unknown content id","code":404},"response":null}
      * ```
+     *
+     * Bazi surumler hatayi dogrudan metin olarak doner:
+     * ```json
+     * {"error":"unknown content id","response":null}
+     * ```
      */
     internal fun parseEngineError(body: String): String? {
         val root = runCatching { mapper.readTree(body) }.getOrNull() ?: return null
         val error = root.get("error") ?: return null
         if (error.isNull) return null
+
+        // Hata dogrudan metin olarak gelmisse.
+        if (error.isTextual) {
+            return error.asText().takeIf { it.isNotBlank() } ?: "bilinmeyen hata"
+        }
+
         val message = error.get("message")?.asText()?.takeIf { it.isNotBlank() }
         val code = error.get("code")?.takeIf { it.isNumber }?.asInt()
         return when {
@@ -376,16 +406,17 @@ data class AceStreamPlayback(
     /**
      * Kullaniciya gosterilecek kisa tanilama metni.
      *
-     * Motorun gercek hata mesajini icerir; boylece "neden oynatilmiyor"
+     * Motorun gercek yanitini her zaman icerir; boylece "neden oynatilmiyor"
      * sorusu ekran bakarak cevaplanabilir.
      */
     fun diagnostic(): String {
-        engineError?.let { return "Motor yanıtı: $it" }
-        if (response.isNotBlank() && !response.trimStart().startsWith("{")) {
-            return "Motor JSON yerine başka bir yanıt döndürdü " +
-                "(format=json desteklenmiyor olabilir): ${response.take(120).trim()}"
+        val raw = response.trim().take(200)
+        return when {
+            engineError != null -> "Motor yanıtı: $engineError${if (raw.isNotEmpty()) " | $raw" else ""}"
+            raw.startsWith("#EXT") ->
+                "Motor JSON yerine m3u8 döndürdü (format=json desteklenmiyor olabilir): $raw"
+            raw.isNotEmpty() -> "Motor yanıtı: $raw"
+            else -> "Motor boş yanıt döndürdü."
         }
-        if (response.isBlank()) return "Motor boş yanıt döndürdü."
-        return "Motor yanıtı: ${response.take(160).trim()}"
     }
 }

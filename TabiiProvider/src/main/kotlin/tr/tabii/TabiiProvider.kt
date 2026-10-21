@@ -1,5 +1,6 @@
 package tr.tabii
 
+import android.util.Log
 import com.lagradost.cloudstream3.ErrorLoadingException
 import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
@@ -47,6 +48,9 @@ class TabiiProvider : MainAPI() {
 
         /** Ana sayfadaki Ace Stream bolumunun adi. */
         const val ACE_SECTION = "Ace Stream"
+
+        /** Log etiketi. */
+        const val TAG = "TabiiProvider"
     }
 
     private val seedUrl get() = "$mainUrl/tr/watch/live/$SEED_SLUG?trackId=$SEED_TRACK_ID"
@@ -149,27 +153,29 @@ class TabiiProvider : MainAPI() {
             add(contentId)
         }.distinct()
 
+        var streamId = contentId
         var diagnostic = ""
         for (candidate in candidates) {
             val playback = AceStream.resolvePlayback(candidate)
             if (playback.isResolved) {
-                return newLiveStreamLoadResponse(
-                    title,
-                    AceStream.acestreamUrl(contentId),
-                    AceStream.manifestUrl(candidate)
-                ) {
-                    posterUrl = known?.logo
-                    plot = "$title — Ace Stream (P2P)"
-                }
+                streamId = candidate
+                diagnostic = ""
+                break
             }
             if (diagnostic.isEmpty()) diagnostic = playback.diagnostic()
         }
 
-        throw ErrorLoadingException(
-            "$title için yayın bulunamadı. $diagnostic " +
-                "İçerik kimliği (content ID) güncel olmayabilir; " +
-                "Ace Stream motorunda kanalın yayında olduğundan emin olun."
-        )
+        if (diagnostic.isNotEmpty()) {
+            // Cozumlenemedi ama motorun redirect modu bazen calisiyor; bu
+            // yuzden hata firlatmak yerine manifest adresiyle devam edilir ve
+            // tanilama loglanir.
+            Log.w(TAG, "$title çözümlenemedi: $diagnostic")
+        }
+
+        return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(streamId)) {
+            posterUrl = known?.logo
+            plot = "$title — Ace Stream (P2P)"
+        }
     }
 
     override suspend fun loadLinks(
@@ -184,9 +190,11 @@ class TabiiProvider : MainAPI() {
             // Motor varsayilan olarak 302 yonlendirmesi yapar. CS3'ün
             // DefaultHttpDataSource'i farkli protokollere yonlendirmeyi takip
             // etmez ve 3xx yanitlar BAD_HTTP_STATUS hatasina yol acar. Bu
-            // yuzden dogrudan oynatma adresi cozulur.
+            // yuzden dogrudan oynatma adresi cozulur; cozulemezse manifest
+            // adresi birakilir (motorun redirect modu bazen calisir).
             val contentId = AceStream.contentIdFromManifest(data)
             val playback = contentId?.let { AceStream.resolvePlayback(it) }
+            playback?.engineError?.let { Log.w(TAG, "Oynatma adresi çözülemedi: $it") }
             callback.invoke(
                 newExtractorLink(name, name, playback?.url ?: data) {
                     type = ExtractorLinkType.M3U8

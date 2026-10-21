@@ -204,6 +204,25 @@ class AceStreamTest {
     }
 
     @Test
+    fun `motor hatayi metin olarak donerse de okunur`() {
+        // Bazi surumler hatayi dogrudan metin olarak doner; once "bilinmeyen
+        // hata" diyorduk ve motorun mesaji kayboluyordu.
+        assertEquals(
+            "Content not found",
+            AceStream.parseEngineError("""{"error":"Content not found","response":null}"""),
+        )
+    }
+
+    @Test
+    fun `tanilama metni ham motor yanitini icerir`() {
+        val body = """{"error":"Content not found","response":null}"""
+        val playback = AceStreamPlayback(null, AceStream.parseEngineError(body), body)
+        val text = playback.diagnostic()
+        assertTrue(text.contains("Content not found"))
+        assertTrue("ham yanit gorunmeli", text.contains("\"error\""))
+    }
+
+    @Test
     fun `motor hatasiz yanit hata mesaji sayilmaz`() {
         assertNull(AceStream.parseEngineError("""{"response":{"playback_url":"x"},"error":null}"""))
         assertNull(AceStream.parseEngineError("""{"response":{}}"""))
@@ -224,7 +243,6 @@ class AceStreamTest {
 
         assertTrue(AceStreamPlayback(null, null, "").diagnostic().contains("boş"))
     }
-
     @Test
     fun `json manifest yanitindan oynatma adresi alinir`() {
         val json = """{"response":{"playback_url":"http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8","stat_url":"x","command_url":"y","infohash":"$beinSports1","playback_session_id":"z","is_live":1,"is_encrypted":0},"error":null}"""
