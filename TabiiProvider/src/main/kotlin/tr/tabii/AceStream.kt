@@ -45,6 +45,14 @@ object AceStream {
     /** Kanalin yayinda oldugunu bildiren arama sonucu durumu. */
     const val STATUS_AVAILABLE = 2
 
+    /**
+     * Bir arama sonucunun kabul edilebilmesi icin gereken en dusuk puan.
+     *
+     * Bu esigin altindaki sonuclar kanal adiyla ilgisizdir; secilirse yanlis
+     * kanal oynatilir.
+     */
+    const val MIN_MATCH_SCORE = 100
+
     private val mapper = ObjectMapper()
 
     /** Verilen metin gecerli bir Ace Stream content ID mi? */
@@ -52,6 +60,21 @@ object AceStream {
 
     /** Content ID'den HLS manifest adresi uretir. */
     fun manifestUrl(contentId: String): String = "$ENGINE_BASE$MANIFEST_PATH?id=$contentId"
+
+    /** Content ID'den JSON biçimli manifest adresi uretir. */
+    fun manifestJsonUrl(contentId: String): String =
+        "$ENGINE_BASE$MANIFEST_PATH?format=json&id=$contentId"
+
+    /**
+     * Manifest adresinden content ID'yi cikarir.
+     *
+     * `load()` cagrisindaki yayin adresinden content ID'yi geri almak icin
+     * kullanilir.
+     */
+    fun contentIdFromManifest(url: String): String? {
+        val raw = url.substringAfter("id=", "").substringBefore('&').trim()
+        return raw.takeIf { isContentId(it) }
+    }
 
     /** Content ID'den `acestream://` adresi uretir. */
     fun acestreamUrl(contentId: String): String = "acestream://$contentId"
@@ -116,6 +139,42 @@ object AceStream {
     suspend fun resolveContentId(name: String, fallback: String): String {
         val best = pickBest(search(name), name) ?: return fallback
         return best.contentId
+    }
+
+    /**
+     * Bir content ID icin dogrudan oynatma adresini cozer.
+     *
+     * Motor varsayilan olarak `format=redirect` ile 302 yonlendirmesi yapar.
+     * CS3'ün `DefaultHttpDataSource` ayari farkli protokollere yonlendirmeyi
+     * takip etmez (`allowCrossProtocolRedirects` varsayilan false) ve 3xx
+     * yanitlari `ERROR_CODE_IO_BAD_HTTP_STATUS` hatasina yol acar. Bu yuzden
+     * yonlendirme oynaticiya birakilmaz; motorun JSON API'sinden dogrudan
+     * oynatma adresi alinir.
+     *
+     * @return Basarili ise oynatma adresi, aksi halde `null`.
+     */
+    suspend fun resolvePlaybackUrl(contentId: String): String? {
+        val body = runCatching { app.get(manifestJsonUrl(contentId)).text }.getOrNull() ?: return null
+        return parsePlaybackUrl(body)
+    }
+
+    /**
+     * `format=json` yanitindan dogrudan oynatma adresini cikarir.
+     *
+     * Beklenen yapi:
+     * ```json
+     * {"response":{"playback_url":"http://127.0.0.1:6878/ace/m/<id>/<sid>.m3u8",
+     *   "infohash":"...","is_live":1},"error":null}
+     * ```
+     *
+     * Motor hatali donerse ya da format desteklenmiyorsa `null`.
+     */
+    internal fun parsePlaybackUrl(body: String): String? {
+        val root = runCatching { mapper.readTree(body) }.getOrNull() ?: return null
+        // Motor hata donduyse oynatma adresi yoktur.
+        root.get("error")?.let { if (!it.isNull) return null }
+        val response = root.get("response") ?: return null
+        return response.get("playback_url")?.asText()?.takeIf { it.isNotBlank() }
     }
 
     /**
@@ -185,12 +244,16 @@ object AceStream {
      * Once tam eslesme, sonra onek/icerik eslesmesi olan sonuclar tercih
      * edilir. Yayinda olan (status = 2) ve kullanilabilirligi yuksek sonuclar
      * daha yuksek puan alir.
+     *
+     * Hicbir sonuc yeterince benzeşmiyorsa `null` doner: yanlis bir kanali
+     * oynatmaktansa eski kimligi kullanmak daha guvenlidir.
      */
     internal fun pickBest(results: List<AceStreamResult>, name: String): AceStreamResult? {
         if (results.isEmpty()) return null
         val target = normalize(name)
         if (target.isEmpty()) return null
-        return results.maxByOrNull { score(it, target) }
+        val best = results.maxByOrNull { score(it, target) } ?: return null
+        return best.takeIf { score(it, target) >= MIN_MATCH_SCORE }
     }
 
     /** Bir arama sonucunun hedef kanala ne kadar uydugunu puanlar. */

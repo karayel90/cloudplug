@@ -123,9 +123,10 @@ class TabiiProvider : MainAPI() {
     /**
      * Bir Ace Stream kanalini yukler.
      *
-     * Content ID'ler yayincinin dosyasini yeniden yuklemesiyle degisebiliyor.
-     * Bu yuzden motorun arama dizininden guncel ID tekrar bulunur; motor
-     * calismiyorsa ya da kanal bulunamazsa listedeki ID kullanilir.
+     * Content ID'ler yayincinin dosyasini yeniden yuklemesiyle degisebiliyor;
+     * bayat bir kimlik motor tarafindan kabul edilmez. Bu yuzden once arama
+     * dizinindeki guncel ID, sonra listedeki ID denenir ve motorun JSON
+     * API'si ile dogrulanir.
      */
     private suspend fun loadAceStreamChannel(contentId: String): LoadResponse {
         // Motor kurulu degilse oynatma hatasi yerine anlasilir bir mesaj
@@ -142,9 +143,19 @@ class TabiiProvider : MainAPI() {
             ?: AceStream.describe(contentId)
             ?: "Ace Stream"
 
-        val freshId = known?.let { AceStream.resolveContentId(it.name, contentId) } ?: contentId
+        // Guncel kimlik once, sabit kimlik sonra denenir.
+        val candidates = buildList {
+            known?.let { add(AceStream.resolveContentId(it.name, contentId)) }
+            add(contentId)
+        }.distinct()
 
-        return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(freshId)) {
+        val workingId = candidates.firstOrNull { AceStream.resolvePlaybackUrl(it) != null }
+            ?: throw ErrorLoadingException(
+                "$title için yayın bulunamadı. İçerik kimliği (content ID) güncel " +
+                    "olmayabilir; Ace Stream motorunda kanalın yayında olduğundan emin olun."
+            )
+
+        return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(workingId)) {
             posterUrl = known?.logo
             plot = "$title — Ace Stream (P2P)"
         }
@@ -159,8 +170,14 @@ class TabiiProvider : MainAPI() {
         // Ace Stream yayinlari motorun yerel HTTP ucundan gelir; ek basliga
         // ihtiyac yoktur.
         if (data.startsWith(AceStream.ENGINE_BASE)) {
+            // Motor varsayilan olarak 302 yonlendirmesi yapar. CS3'ün
+            // DefaultHttpDataSource'i farkli protokollere yonlendirmeyi takip
+            // etmez ve 3xx yanitlar BAD_HTTP_STATUS hatasina yol acar. Bu
+            // yuzden dogrudan oynatma adresi cozulur.
+            val contentId = AceStream.contentIdFromManifest(data)
+            val playbackUrl = contentId?.let { AceStream.resolvePlaybackUrl(it) }
             callback.invoke(
-                newExtractorLink(name, name, data) {
+                newExtractorLink(name, name, playbackUrl ?: data) {
                     type = ExtractorLinkType.M3U8
                     quality = Qualities.Unknown.value
                 }

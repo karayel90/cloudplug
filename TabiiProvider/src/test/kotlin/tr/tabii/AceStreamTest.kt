@@ -194,4 +194,64 @@ class AceStreamTest {
 
         assertNull(AceStream.parseMediaName("""{"result":{"name":null,"files":[]}}"""))
     }
+
+    // --- Oynatma adresi cozumleme (redirect sorunu) ---
+
+    @Test
+    fun `json manifest yanitindan oynatma adresi alinir`() {
+        val json = """{"response":{"playback_url":"http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8","stat_url":"x","command_url":"y","infohash":"$beinSports1","playback_session_id":"z","is_live":1,"is_encrypted":0},"error":null}"""
+        assertEquals(
+            "http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8",
+            AceStream.parsePlaybackUrl(json),
+        )
+    }
+
+    @Test
+    fun `motor hata donerse oynatma adresi olmaz`() {
+        val json = """{"error":{"message":"unknown content id","code":404},"response":null}"""
+        assertNull(AceStream.parsePlaybackUrl(json))
+    }
+
+    @Test
+    fun `format desteklenmiyorsa oynatma adresi olmaz`() {
+        // Motor JSON desteklemiyorsa govde m3u8 olur; JSON parse edilemez.
+        assertNull(AceStream.parsePlaybackUrl("#EXTM3U\n#EXT-X-VERSION:3\n"))
+        assertNull(AceStream.parsePlaybackUrl(""))
+    }
+
+    @Test
+    fun `manifest adresinden content id cikarilir`() {
+        val url = AceStream.manifestUrl(beinSports1)
+        assertEquals(beinSports1, AceStream.contentIdFromManifest(url))
+        assertEquals(beinSports1, AceStream.contentIdFromManifest(AceStream.manifestJsonUrl(beinSports1)))
+        assertNull(AceStream.contentIdFromManifest("https://www.tabii.com/tr/watch/live/trt1"))
+    }
+
+    @Test
+    fun `json manifest adresi format parametresi icerir`() {
+        assertTrue(AceStream.manifestJsonUrl(beinSports1).contains("format=json"))
+        assertTrue(AceStream.manifestJsonUrl(beinSports1).contains("id=$beinSports1"))
+    }
+
+    @Test
+    fun `ilgisiz arama sonucu secilmez`() {
+        // Kanal adiyla hicbir iliskisi olmayan sonuc secilmemeli; yanlis
+        // kanal oynatmak yerine eski kimlik kullanilmali.
+        val results = listOf(
+            AceStreamResult("Eurosport 5", "cccccccccccccccccccccccccccccccccccccccc", 2, 1.0),
+            AceStreamResult("Kanal D", "dddddddddddddddddddddddddddddddddddddddd", 2, 1.0),
+        )
+        assertNull(AceStream.pickBest(results, "beIN SPORTS 1"))
+    }
+
+    @Test
+    fun `onek eslesmesi kabul edilir`() {
+        val results = listOf(
+            AceStreamResult("beIN SPORTS 1 HD", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", 2, 1.0),
+        )
+        assertEquals(
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            AceStream.pickBest(results, "beIN SPORTS 1")?.contentId,
+        )
+    }
 }
