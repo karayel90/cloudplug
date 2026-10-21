@@ -5,9 +5,10 @@
 ## 📖 Bu ne?
 
 [Cloudstream 3](https://github.com/recloudstream/cloudstream) için Türkçe içerik
-sağlayan eklenti deposu. Şu anda **tabii** canlı TV kanalları (TRT 1, TRT 2,
+sağlayan eklenti deposu. **tabii** canlı TV kanalları (TRT 1, TRT 2,
 TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi,
-TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları) destekleniyor.
+TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları) ve
+**Ace Stream** (P2P) kanalları (beIN SPORTS, Setanta) destekleniyor.
 
 * [Cloudstream deposu](https://github.com/recloudstream/cloudstream)
 * [Cloudstream Wiki](https://cloudstream.miraheze.org/wiki/Main_Page)
@@ -47,8 +48,11 @@ Push'tan sonra CI otomatik olarak `builds` branch'ini günceller.
 | Eklenti | Açıklama | Türler |
 |---|---|---|
 | **tabii** | tabii.com canlı TV kanalları | Live |
+| **tabii** | Ace Stream (P2P) kanalları: beIN SPORTS, Setanta | Live |
 
 ## 🔌 Nasıl çalışıyor?
+
+### tabii kanalları
 
 tabii, kanal listesini sunucu tarafında sayfaya gömer. Her canlı kanal
 sayfasının `__NEXT_DATA__` bloğu tüm kanalları ve medya adreslerini içerir;
@@ -64,6 +68,27 @@ DRM'li (FairPlay / Widevine) kayıtlar atlanır.
 
 Abonelik gerektiren tabii kanalları için CS3'ün provider credentials alanına
 tabii oturum çerezinizi yazarsanız isteklerde o çerez gönderilir.
+
+### Ace Stream kanalları
+
+Ana sayfadaki **Ace Stream** bölümü, tabii'de olmayan ucretli kanalları
+(beIN SPORTS 1-4, beIN SPORTS HABER, Setanta Sports) P2P ağı üzerinden sunar.
+
+Ace Stream kanalları 40 haneli bir **content ID** ile adreslenir
+(`acestream://<content-id>`). CS3'ün oynatıcısı `acestream://` şemasını
+çözemediği için yayın, cihazdaki Ace Stream motorunun HTTP ucundan istenir:
+
+```
+http://127.0.0.1:6878/ace/manifest.m3u8?id=<content-id>
+```
+
+**Gereksinim:** cihazda [Ace Stream Engine](https://www.acestream.org/) kurulu
+ve çalışıyor olmalıdır (varsayılan port `6878`). Motor kapalıysa eklenti
+oynatma hatası yerine açıklayıcı bir mesaj gösterir.
+
+Content ID'ler yayıncı dosyayı yeniden yüklediğinde değişebildiği için,
+oynatma anında motorun arama dizininden güncel ID tekrar bulunur; eklendeki
+sabit ID yalnızca yedek olarak kullanılır.
 
 ## 🛠 Geliştirme
 
