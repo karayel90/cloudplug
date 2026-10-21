@@ -39,6 +39,26 @@ object AceStream {
     /** Servis API ucu. */
     const val SERVICE_PATH = "/server/api"
 
+    /**
+     * Motorun durum sorgu adresleri.
+     *
+     * Belgeler iki farkli uc tarif ediyor; farkli surumler birini ya da
+     * digerini uygulamis olabilir.
+     */
+    private val STATUS_URLS = listOf(
+        "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_status",
+        "$ENGINE_BASE/webui/api/service?method=get_version",
+    )
+
+    /**
+     * Oynatma ucunun kabul ettigi parametre adlari, deneme sirasiyla.
+     *
+     * `id` `content_id` degerinin eski takma adidir; `infohash` ise arama
+     * dizininin dondurdugu degerdir. Motor surumune gore hangisinin
+     * tanindigi degisebiliyor.
+     */
+    private val PLAYBACK_PARAMS = listOf("content_id", "id", "infohash")
+
     /** Icerik kimligi: 40 haneli onaltilik ozet. */
     private val CONTENT_ID = Regex("\\A[0-9a-fA-F]{40}\\z")
 
@@ -108,12 +128,15 @@ object AceStream {
      * Motor cihazda kurulu degilse ya da acik degilse `false` doner; boylece
      * kullaniciya "Ace Stream motorunu baslat" gibi anlasilir bir hata
      * gosterebiliriz.
+     *
+     * Belgeler iki farkli durum ucu tarif ediyor; ikisi de denenir.
      */
     suspend fun isEngineRunning(): Boolean {
-        val body = runCatching {
-            app.get("$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_status").text
-        }.getOrNull() ?: return false
-        return body.contains("\"result\"")
+        for (url in STATUS_URLS) {
+            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
+            if (body.contains("\"result\"")) return true
+        }
+        return false
     }
 
     /**
@@ -151,11 +174,44 @@ object AceStream {
      * yonlendirme oynaticiya birakilmaz; motorun JSON API'sinden dogrudan
      * oynatma adresi alinir.
      *
-     * @return Basarili ise oynatma adresi, aksi halde `null`.
+     * Motor `format=json` desteklemiyorsa yanit bir m3u8 olur; bu durumda
+     * [AceStreamPlayback.url] `null` kalir ve manifest adresi kullanilir.
+     *
+     * @return Cozumleme sonucu; motorun hata mesajini da icerir.
      */
-    suspend fun resolvePlaybackUrl(contentId: String): String? {
-        val body = runCatching { app.get(manifestJsonUrl(contentId)).text }.getOrNull() ?: return null
-        return parsePlaybackUrl(body)
+    suspend fun resolvePlayback(contentId: String): AceStreamPlayback {
+        var last = AceStreamPlayback(null, null, "")
+        for (param in PLAYBACK_PARAMS) {
+            val url = "$ENGINE_BASE$MANIFEST_PATH?format=json&$param=$contentId"
+            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
+            parsePlaybackUrl(body)?.let { return AceStreamPlayback(it, null, body) }
+            parseEngineError(body)?.let { return AceStreamPlayback(null, it, body) }
+            // JSON degilse motor format=json'i desteklemiyor olabilir.
+            last = AceStreamPlayback(null, null, body)
+        }
+        return last
+    }
+
+    /**
+     * Motorun dondurdugu hata mesajini cikarir.
+     *
+     * Beklenen yapi:
+     * ```json
+     * {"error":{"message":"unknown content id","code":404},"response":null}
+     * ```
+     */
+    internal fun parseEngineError(body: String): String? {
+        val root = runCatching { mapper.readTree(body) }.getOrNull() ?: return null
+        val error = root.get("error") ?: return null
+        if (error.isNull) return null
+        val message = error.get("message")?.asText()?.takeIf { it.isNotBlank() }
+        val code = error.get("code")?.takeIf { it.isNumber }?.asInt()
+        return when {
+            message != null && code != null -> "$message (kod $code)"
+            message != null -> message
+            code != null -> "hata kodu $code"
+            else -> "bilinmeyen hata"
+        }
     }
 
     /**
@@ -300,3 +356,36 @@ data class AceStreamResult(
     val status: Int?,
     val availability: Double,
 )
+
+/**
+ * Bir content ID icin oynatma adresi cozumleme sonucu.
+ *
+ * @property url Dogrudan oynatma adresi; motor JSON API'sinden alindiysa
+ *   doludur, aksi halde `null`.
+ * @property engineError Motorun dondurdugu hata mesaji.
+ * @property response Motorun ham yaniti (tanilama icin).
+ */
+data class AceStreamPlayback(
+    val url: String?,
+    val engineError: String?,
+    val response: String,
+) {
+    /** Cozumleme basarili mi? */
+    val isResolved: Boolean get() = url != null
+
+    /**
+     * Kullaniciya gosterilecek kisa tanilama metni.
+     *
+     * Motorun gercek hata mesajini icerir; boylece "neden oynatilmiyor"
+     * sorusu ekran bakarak cevaplanabilir.
+     */
+    fun diagnostic(): String {
+        engineError?.let { return "Motor yanıtı: $it" }
+        if (response.isNotBlank() && !response.trimStart().startsWith("{")) {
+            return "Motor JSON yerine başka bir yanıt döndürdü " +
+                "(format=json desteklenmiyor olabilir): ${response.take(120).trim()}"
+        }
+        if (response.isBlank()) return "Motor boş yanıt döndürdü."
+        return "Motor yanıtı: ${response.take(160).trim()}"
+    }
+}

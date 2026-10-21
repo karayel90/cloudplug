@@ -149,16 +149,27 @@ class TabiiProvider : MainAPI() {
             add(contentId)
         }.distinct()
 
-        val workingId = candidates.firstOrNull { AceStream.resolvePlaybackUrl(it) != null }
-            ?: throw ErrorLoadingException(
-                "$title için yayın bulunamadı. İçerik kimliği (content ID) güncel " +
-                    "olmayabilir; Ace Stream motorunda kanalın yayında olduğundan emin olun."
-            )
-
-        return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(workingId)) {
-            posterUrl = known?.logo
-            plot = "$title — Ace Stream (P2P)"
+        var diagnostic = ""
+        for (candidate in candidates) {
+            val playback = AceStream.resolvePlayback(candidate)
+            if (playback.isResolved) {
+                return newLiveStreamLoadResponse(
+                    title,
+                    AceStream.acestreamUrl(contentId),
+                    AceStream.manifestUrl(candidate)
+                ) {
+                    posterUrl = known?.logo
+                    plot = "$title — Ace Stream (P2P)"
+                }
+            }
+            if (diagnostic.isEmpty()) diagnostic = playback.diagnostic()
         }
+
+        throw ErrorLoadingException(
+            "$title için yayın bulunamadı. $diagnostic " +
+                "İçerik kimliği (content ID) güncel olmayabilir; " +
+                "Ace Stream motorunda kanalın yayında olduğundan emin olun."
+        )
     }
 
     override suspend fun loadLinks(
@@ -175,9 +186,9 @@ class TabiiProvider : MainAPI() {
             // etmez ve 3xx yanitlar BAD_HTTP_STATUS hatasina yol acar. Bu
             // yuzden dogrudan oynatma adresi cozulur.
             val contentId = AceStream.contentIdFromManifest(data)
-            val playbackUrl = contentId?.let { AceStream.resolvePlaybackUrl(it) }
+            val playback = contentId?.let { AceStream.resolvePlayback(it) }
             callback.invoke(
-                newExtractorLink(name, name, playbackUrl ?: data) {
+                newExtractorLink(name, name, playback?.url ?: data) {
                     type = ExtractorLinkType.M3U8
                     quality = Qualities.Unknown.value
                 }

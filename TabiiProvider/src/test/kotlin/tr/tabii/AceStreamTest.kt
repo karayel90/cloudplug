@@ -198,6 +198,34 @@ class AceStreamTest {
     // --- Oynatma adresi cozumleme (redirect sorunu) ---
 
     @Test
+    fun `motor hata mesaji okunur`() {
+        val json = """{"error":{"message":"unknown content id","code":404},"response":null}"""
+        assertEquals("unknown content id (kod 404)", AceStream.parseEngineError(json))
+    }
+
+    @Test
+    fun `motor hatasiz yanit hata mesaji sayilmaz`() {
+        assertNull(AceStream.parseEngineError("""{"response":{"playback_url":"x"},"error":null}"""))
+        assertNull(AceStream.parseEngineError("""{"response":{}}"""))
+        assertNull(AceStream.parseEngineError("bozuk json"))
+    }
+
+    @Test
+    fun `cozumleme sonucu tanilama metni uretir`() {
+        val withError = AceStreamPlayback(null, "unknown content id (kod 404)", "")
+        assertTrue(withError.diagnostic().contains("unknown content id"))
+        assertFalse(withError.isResolved)
+
+        val withUrl = AceStreamPlayback("http://127.0.0.1:6878/ace/m/x/y.m3u8", null, "")
+        assertTrue(withUrl.isResolved)
+
+        val notJson = AceStreamPlayback(null, null, "#EXTM3U\n#EXT-X-VERSION:3")
+        assertTrue(notJson.diagnostic().contains("format=json"))
+
+        assertTrue(AceStreamPlayback(null, null, "").diagnostic().contains("boş"))
+    }
+
+    @Test
     fun `json manifest yanitindan oynatma adresi alinir`() {
         val json = """{"response":{"playback_url":"http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8","stat_url":"x","command_url":"y","infohash":"$beinSports1","playback_session_id":"z","is_live":1,"is_encrypted":0},"error":null}"""
         assertEquals(
