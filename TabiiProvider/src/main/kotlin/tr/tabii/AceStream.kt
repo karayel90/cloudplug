@@ -59,13 +59,23 @@ object AceStream {
     /**
      * `acestream://<id>` adresinden content ID'yi cikarir.
      *
+     * CS3, arama sonuclarindaki adresleri `MainAPI.fixUrl()` ile mutlaklastirir.
+     * `acestream://` "http" ile baslamadigi icin adres `mainUrl` ile
+     * birlestirilir:
+     *
+     * ```
+     * acestream://<id>  ->  https://www.tabii.com/acestream://<id>
+     * ```
+     *
+     * Bu yuzden adresin icinde `acestream://` isareti aranir; boylece ister
+     * dogrumdan ister `mainUrl` eklenmis bicim taninir.
+     *
      * Gecersiz ya da farkli bir sema iceren adreslerde `null` doner.
      */
     fun contentIdOf(url: String): String? {
-        val raw = url.trim()
-            .removePrefix("acestream://")
-            .substringBefore('?')
-            .substringBefore('/')
+        val marker = "acestream://"
+        if (!url.contains(marker)) return null
+        val raw = url.substringAfter(marker).substringBefore('?').substringBefore('/').trim()
         return raw.takeIf { isContentId(it) }
     }
 

@@ -196,6 +196,11 @@ class TabiiProvider : MainAPI() {
             name,
             pageUrl,
             TvType.Live,
+            // CS3, arama sonucu adreslerini `MainAPI.fixUrl()` ile
+            // mutlaklastirir. `acestream://` "http" ile baslamadigi icin
+            // adres `mainUrl` ile birlestirilip bozulur; `fix = false` ile
+            // adres oldugu gibi birakilir.
+            fix = false,
         ) {
             posterUrl = logo
         }

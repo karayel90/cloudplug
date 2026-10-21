@@ -49,6 +49,28 @@ class AceStreamTest {
     }
 
     @Test
+    fun `cs3 un ekledigi mainUrl onekli adres de taninir`() {
+        // CS3 `MainAPI.fixUrl()` "http" ile baslamayan adresleri `mainUrl` ile
+        // birlestirir: acestream://<id> -> https://www.tabii.com/acestream://<id>
+        assertEquals(
+            beinSports1,
+            AceStream.contentIdOf("https://www.tabii.com/acestream://$beinSports1"),
+        )
+        assertEquals(
+            beinSports1,
+            AceStream.contentIdOf("https://www.tabii.com/acestream://$beinSports1?x=1"),
+        )
+    }
+
+    @Test
+    fun `tabii adresleri content id olarak algilanmaz`() {
+        // tabii kanallarinin adresleri 6 haneli trackId tasir, 40 haneli
+        // onaltilik ozet icermez.
+        assertNull(AceStream.contentIdOf("https://www.tabii.com/tr/watch/live/trt1?trackId=150002"))
+        assertNull(AceStream.contentIdOf("https://www.tabii.com/tr/watch/live/trt1"))
+    }
+
+    @Test
     fun `acestream olmayan adreslerden content id cikarilmaz`() {
         assertNull(AceStream.contentIdOf("https://www.tabii.com/tr/watch/live/trt1"))
         assertNull(AceStream.contentIdOf("acestream://kisa"))
