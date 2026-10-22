@@ -123,12 +123,8 @@ Ana sayfadaki **Ace Stream** bölümü, tabii'de olmayan ucretli kanalları
 (beIN SPORTS HD 1-3 [TR]) P2P ağı üzerinden sunar.
 
 Ace Stream kanalları 40 haneli bir **content ID** ile adreslenir
-(`acestream://<content-id>`). CS3'ün oynatıcısı `acestream://` şemasını
-çözemediği için yayın, cihazdaki Ace Stream motorunun HTTP ucundan istenir:
-
-```
-http://127.0.0.1:6878/ace/manifest.m3u8?content_id=<content-id>
-```
+(`acestream://<content-id>`). İki farklı kimlik vardır ve motor bunları
+birbirinin yerine kullanmaz: `content_id` ve `infohash`.
 
 | Kanal | Content ID |
 |---|---|
@@ -136,18 +132,21 @@ http://127.0.0.1:6878/ace/manifest.m3u8?content_id=<content-id>
 | beIN SPORTS HD 2 [TR] | `48bee10b883f17c7186d60f1e8022dca0ba41a05` |
 | beIN SPORTS HD 3 [TR] | `ed81c333815247536edfcdb2755147e8c4144d62` |
 
-**Gereksinim:** cihazda [Ace Stream Engine](https://www.acestream.org/) kurulu
-ve çalışıyor olmalıdır (varsayılan port `6878`). Motor kapalıysa eklenti
-oynatma hatası yerine açıklayıcı bir mesaj gösterir.
+**Yayın neden Ace Stream uygulamasına bırakılıyor?** Motorun **tek bir
+oynatıcısı** vardır. Yayın CS3'te oynatılırsa aynı anda iki istek atılır
+(bir tanesi önizleme, bir tanesi oynatma) ve ikisi de birer oynatma oturumu
+açar; motor iki oturuma birden açık kalamayınca `HTTP 500` döner. Bunun
+yerine `acestream://` adresi doğrudan **Ace Stream uygulamasına** gönderilir
+— yayını zaten onun motoru çeker, CS3 motorun HTTP ucuna hiç dokunmaz.
 
-> **Aynı anda tek uygulama açık olmalı.** Ace Stream motorunun **tek bir
-> oynatıcısı** vardır; Ace Player açıkken CS3'te yayın açmak (ya da tersi)
-> motorun oynatıcısını devralır ve yayın kesilir. Test sırasında Ace
-> Player'ı kapatın.
+**Gereksinim:** cihazda [Ace Stream](https://www.acestream.org/) kurulu ve
+çalışıyor olmalıdır. **Motor yalnızca uygulama açıkken ayakta kalır**;
+uygulama arka planda kapatılırsa motor durur ve eklenti net bir mesajla
+uyarır.
 
 Content ID'ler yayıncı dosyayı yeniden yüklediğinde değişebildiği için,
-oynatma anında motorun arama dizininden güncel ID tekrar bulunur; eklendeki
-sabit ID yalnızca yedek olarak kullanılır.
+oynatma anında motorun arama dizininden güncel kimlikler de bulunur ve
+sırayla denenir; eklendeki sabit kimlikler yalnızca yedektir.
 
 ## 🛠 Geliştirme
 
