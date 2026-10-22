@@ -17,18 +17,33 @@ class AceStreamChannelsTest {
     @Test
     fun `her kanalin gecerli content id si var`() {
         for (c in AceStreamChannels.ALL) {
-            assertTrue("${c.id}: content id gecersiz: ${c.contentId}", AceStream.isContentId(c.contentId))
+            assertTrue("${c.id}: content ID listesi bos", c.contentIds.isNotEmpty())
+            for (id in c.contentIds) {
+                assertTrue("${c.id}: content id gecersiz: $id", AceStream.isContentId(id))
+            }
             assertTrue("${c.id}: ad bos", c.name.isNotBlank())
             assertTrue("${c.id}: logo bos", !c.logo.isNullOrBlank())
         }
     }
 
     @Test
-    fun `bein sports 1 kullanicinin verdigi content id ile listeleniyor`() {
+    fun `content ID'ler kanal icinde benzersiz`() {
+        for (c in AceStreamChannels.ALL) {
+            assertEquals("${c.id}: yinelenen content ID", c.contentIds.size, c.contentIds.toSet().size)
+        }
+    }
+
+    @Test
+    fun `bein sports 1 kullanicinin verdigi content id listede`() {
         val channel = AceStreamChannels.ALL.firstOrNull { it.name == "beIN SPORTS 1" }
         assertNotNull(channel)
-        assertEquals("118416583faa3fb4f03800173429b6b844b43a52", channel!!.contentId)
-        assertEquals("acestream://118416583faa3fb4f03800173429b6b844b43a52", channel.pageUrl)
+        assertTrue(
+            "kullanici content ID'si kaybolmus",
+            channel!!.contentIds.contains("118416583faa3fb4f03800173429b6b844b43a52"),
+        )
+        // Birincil ID guncel olan olmali; kullanicinin ID'si yedek olarak durur.
+        assertEquals("016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc", channel.contentId)
+        assertEquals("acestream://016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc", channel.pageUrl)
     }
 
     @Test
@@ -37,6 +52,11 @@ class AceStreamChannelsTest {
         assertEquals("beIN SPORTS 1", channel?.name)
         // buyuk/kucuk harf fark etmemeli
         assertNotNull(AceStreamChannels.byContentId("118416583FAa3FB4F03800173429B6B844B43A52"))
+        // birincil olmayan ID de bulunmali
+        assertEquals(
+            "beIN SPORTS 1",
+            AceStreamChannels.byContentId("016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc")?.name,
+        )
         assertNull(AceStreamChannels.byContentId("0000000000000000000000000000000000000000"))
     }
 

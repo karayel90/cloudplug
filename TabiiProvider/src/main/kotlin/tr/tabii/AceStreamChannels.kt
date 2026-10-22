@@ -8,15 +8,21 @@ package tr.tabii
  *
  * @property id Kanalin benzersiz anahtari
  * @property name Goruntulenecek kanal adi
- * @property contentId Ace Stream icerik kimligi (40 haneli onaltilik ozet)
+ * @property contentIds Bilinen content ID'ler, en guncelden eskiye dogru.
+ *   Ayni kanalin P2P aginda birden fazla "yayinci" (uploader) node'u
+ *   olabiliyor ve her birinin kendi content ID'si var. Bunlardan biri
+ *   oldugunde digeri olabiliyor; bu yuzden hepsi sirayla denenir.
  * @property logo Kanal logosunun adresi
  */
 data class AceStreamChannel(
     val id: String,
     val name: String,
-    val contentId: String,
+    val contentIds: List<String>,
     val logo: String?,
 ) {
+    /** Birincil content ID. */
+    val contentId: String get() = contentIds.first()
+
     /** Kanalin `acestream://` adresi. */
     val pageUrl: String get() = AceStream.acestreamUrl(contentId)
 }
@@ -25,9 +31,10 @@ data class AceStreamChannel(
  * Desteklenen Ace Stream kanallari.
  *
  * Content ID'ler yayincinin dosyasini yeniden yuklemesiyle degisebiliyor.
- * Bu yuzden sabit ID'ye guvenmek yerine, oynatma aninda motorun arama
- * dizininden guncel ID tekrar bulunur (bkz. [AceStream.resolveContentId]).
- * Buradaki ID'ler oyunun hemen calismasini saglayan yedek degerlerdir.
+ * Bu yuzden asil kaynak motorun arama dizinidir: oynatma aninda kanal adiyla
+ * arama yapilir, motorun bildirdigi guncel ID'ler kullanilir. Buradaki
+ * sabitler yalnizca arama sonucu bos dondugunde ya da motor kapaliyken
+ * yedek olarak kullanilir.
  */
 object AceStreamChannels {
 
@@ -35,50 +42,74 @@ object AceStreamChannels {
         AceStreamChannel(
             id = "bein-sports-1",
             name = "beIN SPORTS 1",
-            contentId = "118416583faa3fb4f03800173429b6b844b43a52",
+            contentIds = listOf(
+                "016d48fb89bb9505ab3f883db1bfb3a7c0a3eccc",
+                "bba1905fcd1c4975aec544047bf8e4cd23ce3fe0",
+                "118416583faa3fb4f03800173429b6b844b43a52",
+            ),
             logo = "https://i.ibb.co/3fPVPLL/Bein1.png",
         ),
         AceStreamChannel(
             id = "bein-sports-2",
             name = "beIN SPORTS 2",
-            contentId = "48bee10b883f17c7186d60f1e8022dca0ba41a05",
+            contentIds = listOf(
+                "b28db77c5084da7993395d77df96c30bb134f0a9",
+                "87bff2403eb507ed8b18f9409b32afb167b516a1",
+                "48bee10b883f17c7186d60f1e8022dca0ba41a05",
+            ),
             logo = "https://i.ibb.co/9VMNBsJ/Bein2.png",
         ),
         AceStreamChannel(
             id = "bein-sports-3",
             name = "beIN SPORTS 3",
-            contentId = "ed81c333815247536edfcdb2755147e8c4144d62",
+            contentIds = listOf(
+                "bba1905fcd1c4975aec544047bf8e4cd23ce3fe0",
+                "ed81c333815247536edfcdb2755147e8c4144d62",
+            ),
             logo = "https://i.ibb.co/GkX99sd/Bein3.png",
         ),
         AceStreamChannel(
             id = "bein-sports-4",
             name = "beIN SPORTS 4",
-            contentId = "7683cd0cbacf55fa8b39c363219ffba1bc47cf9d",
+            contentIds = listOf(
+                "b6baa046075d82da300fc1b16de96067a8b9540e",
+                "7683cd0cbacf55fa8b39c363219ffba1bc47cf9d",
+            ),
             logo = "https://i.ibb.co/swxDvMT/Bein4.png",
         ),
         AceStreamChannel(
             id = "bein-sports-haber",
             name = "beIN SPORTS HABER",
-            contentId = "47c1b3a68d03bd190fed521d144ad08fa0f195f3",
+            contentIds = listOf(
+                "7683cd0cbacf55fa8b39c363219ffba1bc47cf9d",
+                "47c1b3a68d03bd190fed521d144ad08fa0f195f3",
+            ),
             logo = "https://i.ibb.co/cvTFJQt/Bein-Haber.png",
         ),
         AceStreamChannel(
             id = "setanta-sports",
             name = "Setanta Sports",
-            contentId = "42fe2ce3ef6b92653a74d85b6e98c2ba0abee707",
+            contentIds = listOf(
+                "efc60cfe5e3a349baa02bcc49f6647c21a9c3c5b",
+                "c03afac2313901942a80986a083b891fb5a437fc",
+                "42fe2ce3ef6b92653a74d85b6e98c2ba0abee707",
+            ),
             logo = "https://i.ibb.co/f2vxWxj/Setanta1.png",
         ),
         AceStreamChannel(
             id = "setanta-sports-plus",
             name = "Setanta Sports Plus",
-            contentId = "f6d68cfa8694f814983f2a5757f4e0c4964b880c",
+            contentIds = listOf(
+                "7c02814084b8eb0e3fc5a9093fccf1d8f3999d55",
+                "f6d68cfa8694f814983f2a5757f4e0c4964b880c",
+            ),
             logo = "https://i.ibb.co/P4sWVG3/Setanta2.png",
         ),
     )
 
     /** Content ID'ye gore kanal bulur. */
     fun byContentId(contentId: String): AceStreamChannel? =
-        ALL.firstOrNull { it.contentId.equals(contentId, ignoreCase = true) }
+        ALL.firstOrNull { ch -> ch.contentIds.any { it.equals(contentId, ignoreCase = true) } }
 
     /** Kimlige gore kanal bulur. */
     fun byId(id: String): AceStreamChannel? = ALL.firstOrNull { it.id == id }

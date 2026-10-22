@@ -300,4 +300,31 @@ class AceStreamTest {
             AceStream.pickBest(results, "beIN SPORTS 1")?.contentId,
         )
     }
+
+    @Test
+    fun `arama sonuclarinin tamami kullanilabilirlige gore siralanir`() {
+        // Ayni kanalin birden fazla yayinci node'u olabiliyor; en kullanilabilir
+        // olan once denenmeli.
+        val results = listOf(
+            AceStreamResult("beIN SPORTS 1", "1111111111111111111111111111111111111111", 1, 0.2),
+            AceStreamResult("beIN SPORTS 1", "2222222222222222222222222222222222222222", 2, 0.9),
+            AceStreamResult("beIN SPORTS 1", "3333333333333333333333333333333333333333", 2, 0.4),
+        )
+        val target = AceStream.normalize("beIN SPORTS 1")
+        val ordered = results
+            .filter { AceStream.score(it, target) >= AceStream.MIN_MATCH_SCORE }
+            .sortedByDescending {
+                (if (it.status == AceStream.STATUS_AVAILABLE) 10_000 else 0) +
+                    (it.availability * 1000).toInt()
+            }
+            .map { it.contentId }
+        assertEquals(
+            listOf(
+                "2222222222222222222222222222222222222222",
+                "3333333333333333333333333333333333333333",
+                "1111111111111111111111111111111111111111",
+            ),
+            ordered,
+        )
+    }
 }

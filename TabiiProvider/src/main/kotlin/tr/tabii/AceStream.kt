@@ -160,15 +160,28 @@ object AceStream {
     }
 
     /**
-     * Bir kanalin guncel content ID'sini arama dizininden bulur.
+     * Bir kanalin denenecek content ID'lerini dondurur.
      *
-     * Content ID'ler yayincinin dosyasini yeniden yuklemesiyle degisebiliyor.
-     * Sabit bir ID'ye guvenmek yerine, motorun bildirdigi guncel ID tercih
-     * edilir; bulunamazsa [fallback] kullanilir.
+     * Once motorun arama dizininden gelen, kanal adiyla eslesen tum
+     * sonuclar kullanilabilirlige gore siralanarak gelir; ardindan sabit
+     * (yedek) ID'ler eklenir.
+     *
+     * Ace Stream'de ayni kanalin P2P aginda **birden fazla yayinci
+     * (uploader) node'u** olabiliyor ve her birinin kendi content ID'si var.
+     * Bunlardan biri olurken digeri oluyor. Bu yuzden tek bir ID'ye guvenmek
+     * yerine hepsi denenir; aksi halde tek bir yayincinin kapanmasi kanali
+     * tamamen cokertiyor.
      */
-    suspend fun resolveContentId(name: String, fallback: String): String {
-        val best = pickBest(search(name), name) ?: return fallback
-        return best.contentId
+    suspend fun resolveContentIds(name: String, pinned: List<String>): List<String> {
+        val target = normalize(name)
+        val searched = search(name)
+            .filter { score(it, target) >= MIN_MATCH_SCORE }
+            .sortedByDescending {
+                (if (it.status == STATUS_AVAILABLE) 10_000 else 0) +
+                    (it.availability * 1000).toInt()
+            }
+            .map { it.contentId }
+        return (searched + pinned).filter { isContentId(it) }.distinct()
     }
 
     /**

@@ -147,11 +147,12 @@ class TabiiProvider : MainAPI() {
             ?: AceStream.describe(contentId)
             ?: "Ace Stream"
 
-        // Guncel kimlik once, sabit kimlik sonra denenir.
-        val candidates = buildList {
-            known?.let { add(AceStream.resolveContentId(it.name, contentId)) }
-            add(contentId)
-        }.distinct()
+        // Once motorun arama dizinindeki guncel ID'ler, sonra sabit yedekler.
+        // Ayni kanalin birden fazla yayinci node'u olabiliyor; hepsi denenir.
+        val candidates = known
+            ?.let { AceStream.resolveContentIds(it.name, it.contentIds) }
+            ?: listOf(contentId)
+        Log.d(TAG, "$title: ${candidates.size} content ID denenecek")
 
         var streamId = contentId
         var diagnostic = ""
