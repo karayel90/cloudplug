@@ -131,18 +131,21 @@ class TabiiProvider : MainAPI() {
     /**
      * Bir Ace Stream kanalini yukler.
      *
-     * Content ID'ler yayincinin dosyasini yeniden yuklemesiyle degisebiliyor;
-     * bayat bir kimlik motor tarafindan kabul edilmez. Bu yuzden once arama
-     * dizinindeki guncel ID, sonra listedeki ID denenir ve motorun JSON
-     * API'si ile dogrulanir.
+     * Once kanalin bilinen content_id'leri (kullanicinin dogruladigi
+     * degerler), sonra motorun arama dizinindeki infohash'ler denenir.
+     * Motor `?content_id=` ile yalnizca content_id, `?infohash=` ile yalnizca
+     * infohash kabul ediyor; bu yuzden turun degisikligi onemlidir.
+     *
+     * Dogrulama SALT-OKUNUR bir API ile yapilir; oynatma oturumu acmaz.
      */
     private suspend fun loadAceStreamChannel(contentId: String): LoadResponse {
         // Motor kurulu degilse oynatma hatasi yerine anlasilir bir mesaj
         // gostermek cok daha faydalari.
         if (!AceStream.isEngineRunning()) {
             throw ErrorLoadingException(
-                "Ace Stream motoru çalışmıyor. Cihazda Ace Stream Engine kurulu ve " +
-                    "açık olmalı (varsayılan adres: ${AceStream.ENGINE_BASE})."
+                "Ace Stream motoru çalışmıyor. Cihazda Ace Stream uygulamasını açıp " +
+                    "kanalın yayında olduğundan emin olun (motor yalnızca uygulama " +
+                    "açıkken ayakta kalır)."
             )
         }
 
@@ -151,28 +154,54 @@ class TabiiProvider : MainAPI() {
             ?: AceStream.describe(contentId)
             ?: "Ace Stream"
 
-        // Once motorun arama dizinindeki guncel ID'ler, sonra sabit yedekler.
-        // Ayni kanalin birden fazla yayinci node'u olabiliyor; hepsi denenir.
-        val candidates = known
-            ?.let { AceStream.resolveContentIds(it.searchNames, it.contentIds) }
-            ?: listOf(contentId)
-        Log.d(TAG, "$title: ${candidates.size} content ID denenecek")
+        val refs = known
+            ?.let { AceStream.resolveContentRefs(it.searchNames, it.contentIds) }
+            ?: listOf(AceContentRef(contentId))
+        Log.d(TAG, "$title: ${refs.size} içerik referansı denenecek")
 
-        // Dogrulama SALT-OKUNUR bir API ile yapilir; oynatma oturumu
-        // acilmaz. Aksi halde motorun TEK oynaticisi adaylar arasinda
-        // gezinir ve (ayni anda calisan Ace Player dahil) yanlis kanal
-        // oynatir.
-        var streamId = candidates.firstOrNull() ?: contentId
-        for (candidate in candidates) {
-            val error = AceStream.checkContent(candidate)
+        var working: AceContentRef? = null
+        var diagnostic = ""
+        for (ref in refs) {
+            val error = AceStream.checkContent(ref)
             if (error == null) {
-                streamId = candidate
+                working = ref
+                diagnostic = ""
                 break
             }
-            Log.d(TAG, "$title: $candidate yüklenemedi ($error), sıradakine geçiliyor")
+            Log.d(TAG, "$title: ${ref.value} yüklenemedi ($error), sıradakine geçiliyor")
+            if (diagnostic.isEmpty()) diagnostic = error
         }
 
-        return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(streamId)) {
+        if (working == null) {
+            throw ErrorLoadingException(
+                "$title için yayın bulunamadı. $diagnostic " +
+                    "Ace Stream motoru P2P ağına bağlanamıyor olabilir; uygulamayı açıp " +
+                    "kanalın yayında olduğundan emin olun."
+            )
+        }
+
+        // Ace Stream uygulamasi varsa P2P oynatmayi ona birak: motorun TEK
+        // oynaticisi var ve CS3 hem onizleme hem oynatma icin ayri istek
+        // atinca motor iki oturuma birden acik kalamiyor (HTTP 500).
+        val context = AceStreamApp.cs3Context()
+        if (context != null && AceStreamApp.canHandle(context, AceStream.acestreamUrl(contentId))) {
+            if (AceStreamApp.launch(context, contentId)) {
+                return newLiveStreamLoadResponse(
+                    title,
+                    AceStream.acestreamUrl(contentId),
+                    "",
+                ) {
+                    posterUrl = known?.logo
+                    plot = "$title — Ace Stream uygulamasında açılıyor…"
+                }
+            }
+        }
+
+        return newLiveStreamLoadResponse(
+            title,
+            AceStream.acestreamUrl(contentId),
+            working.manifestUrl(),
+        ) {
             posterUrl = known?.logo
             plot = "$title — Ace Stream (P2P)"
         }

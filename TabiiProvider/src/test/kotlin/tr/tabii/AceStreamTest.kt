@@ -29,16 +29,27 @@ class AceStreamTest {
     }
 
     @Test
-    fun `manifest adresi dogru kurulur`() {
-        assertEquals(
-            "http://127.0.0.1:6878/ace/manifest.m3u8?content_id=$beinSports1",
-            AceStream.manifestUrl(beinSports1),
-        )
+    fun `acestream adresi dogru kurulur`() {
+        assertEquals("acestream://$beinSports1", AceStream.acestreamUrl(beinSports1))
     }
 
     @Test
-    fun `acestream adresi dogru kurulur`() {
-        assertEquals("acestream://$beinSports1", AceStream.acestreamUrl(beinSports1))
+    fun `content_id ve infohash farkli parametre kullanir`() {
+        // Cihazda olculdu:
+        //   ?content_id=<content_id> -> 302 (calisir)
+        //   ?content_id=<infohash>   -> HTTP 500
+        //   ?infohash=<infohash>     -> 302 (calisir)
+        //   ?infohash=<content_id>   -> HTTP 500
+        val contentIdRef = AceContentRef(beinSports1, isInfohash = false)
+        val infohashRef = AceContentRef(beinSports1, isInfohash = true)
+
+        assertTrue(contentIdRef.manifestUrl().contains("content_id="))
+        assertFalse(contentIdRef.manifestUrl().contains("infohash="))
+        assertTrue(infohashRef.manifestUrl().contains("infohash="))
+        assertFalse(infohashRef.manifestUrl().contains("content_id="))
+
+        assertTrue(contentIdRef.checkUrl().contains("content_id="))
+        assertTrue(infohashRef.checkUrl().contains("infohash="))
     }
 
     @Test
@@ -190,7 +201,7 @@ class AceStreamTest {
 
     @Test
     fun `manifest adresi content id iceriyor`() {
-        val url = AceStream.manifestUrl(beinSports1)
+        val url = AceContentRef(beinSports1).manifestUrl()
         assertTrue(url.contains(beinSports1))
         assertTrue(url.contains("/ace/manifest.m3u8"))
         // Motorun kanonik parametresi content_id (id eski takma ad)

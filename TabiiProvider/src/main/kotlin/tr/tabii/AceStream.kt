@@ -59,7 +59,6 @@ object AceStream {
      * tanindigi degisebiliyor.
      */
     private val CONTENT_PARAMS = listOf("content_id", "id", "infohash")
-
     /** Icerik kimligi: 40 haneli onaltilik ozet. */
     private val CONTENT_ID = Regex("\\A[0-9a-fA-F]{40}\\z")
 
@@ -70,15 +69,6 @@ object AceStream {
 
     /** Verilen metin gecerli bir Ace Stream content ID mi? */
     fun isContentId(value: String): Boolean = CONTENT_ID.matches(value)
-
-    /**
-     * Content ID'den HLS manifest adresi uretir.
-     *
-     * Motorun oynatma ucu `content_id` parametresini kabul eder (`id` eski
-     * takma adidir). Yayin adresi motorun HTTP ucundan dogrudan gelir;
-     * yonlendirmeyi oynatici takip eder.
-     */
-    fun manifestUrl(contentId: String): String = "$ENGINE_BASE$MANIFEST_PATH?content_id=$contentId"
 
     /** Content ID'den `acestream://` adresi uretir. */
     fun acestreamUrl(contentId: String): String = "acestream://$contentId"
@@ -137,51 +127,49 @@ object AceStream {
     }
 
     /**
-     * Bir kanalin denenecek content ID'lerini dondurur.
+     * Bir kanalin denenecek icerik referanslarini dondurur.
      *
-     * Once **sabit (pinned) ID'ler** gelir: bunlar kullanicinin Ace Player
-     * ekranindan alinan ve o an gecerli olan degerlerdir, dolayisiyla
-     * otoritatifdir. Ardindan motorun arama dizininden gelen, kanal adiyla
-     * **tam eslesen** sonuclar gelir; bunlar ID dondugunde devreye girer.
+     * Once **sabit (pinned) content_id'ler** gelir: bunlar kullanicinin
+     * dogruladigi degerlerdir, dolayisiyla otoritatifdir. Ardindan motorun
+     * arama dizininden gelen **infohash'ler** gelir; bunlar `get_content_id`
+     * ile content_id'ye cevrilebilir ama gerekmez, cunku motor
+     * `?infohash=` parametresini de kabul eder.
      *
      * Ace Stream'de ayni kanalin P2P aginda **birden fazla yayinci
-     * (uploader) node'u** olabiliyor ve her birinin kendi content ID'si var.
-     * Bunlardan biri olurken digeri oluyor. Bu yuzden tek bir ID'ye guvenmek
-     * yerine hepsi denenir; aksi halde tek bir yayincinin kapanmasi kanali
-     * tamamen cokertiyor.
+     * (uploader) node'u** olabiliyor ve her birinin kendi kimligi var.
+     * Bunlardan biri olurken digeri oluyor; bu yuzden hepsi denenir.
      *
      * @param searchNames Motor dizininde aranacak adlar, oncelik sirasiyla.
-     *   Her ad icin ayri arama yapilir ve sonuclar **token** eslesmesiyle
-     *   filtrelenir; boylece "beIN SPORTS HD 1 [TR]" aramasi
-     *   "beIN SPORTS 1 TR" sonucunu yanlislikla almaz.
+     * @param pinned Kanalin bilinen content_id'leri.
      */
-    suspend fun resolveContentIds(
+    suspend fun resolveContentRefs(
         searchNames: List<String>,
         pinned: List<String>,
-    ): List<String> {
-        val result = mutableListOf<String>()
+    ): List<AceContentRef> {
+        val refs = mutableListOf<AceContentRef>()
+        // Sabit content_id'ler once.
+        pinned.filter { isContentId(it) }.forEach { refs += AceContentRef(it, isInfohash = false) }
+        // Arama dizini infohash doner.
         for (query in searchNames) {
             val target = tokens(query)
             if (target.isEmpty()) continue
-            val matches = search(query)
+            search(query)
                 .filter { matchesTokens(it.name, target) }
                 .sortedByDescending {
                     (if (it.status == STATUS_AVAILABLE) 10_000 else 0) +
                         (it.availability * 1000).toInt()
                 }
-                .map { it.contentId }
-            result += matches
+                .forEach { refs += AceContentRef(it.contentId, isInfohash = true) }
         }
-        // Sabit ID'ler once: kullanicinin dogruladigi degerler onceliklidir.
-        return (pinned + result).filter { isContentId(it) }.distinct()
+        return refs.distinctBy { it.value to it.isInfohash }
     }
 
     /**
-     * Bir content ID'nin motor tarafindan tanindigini **salt okunur** bir
-     * API ile dogrular.
+     * Bir icerik referansinin motor tarafindan tanindigini **salt okunur**
+     * bir API ile dogrular.
      *
-     * Dogrulama icin `/server/api?method=get_media_files` kullanilir; bu
-     * uc yalnizca icerik bilgisini okur ve **oynatma oturumu acmaz**.
+     * Dogrulama icin `get_media_files` kullanilir; bu uc yalnizca icerik
+     * bilgisini okur ve **oynatma oturumu acmaz**.
      *
      * Bu onemli: motorun tek bir oynaticisi var ve `format=json` ile her
      * deneme bir oturum acar. Adaylar sirayla denenirken oturumlar
@@ -190,18 +178,18 @@ object AceStream {
      *
      * @return Basarili ise `null`, aksi halde motorun hata mesaji.
      */
-    suspend fun checkContent(contentId: String): String? {
-        for (param in CONTENT_PARAMS) {
-            val url = "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_media_files&$param=$contentId"
-            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
-            val root = runCatching { mapper.readTree(body) }.getOrNull() ?: continue
-            val error = root.get("error")
-            if (error != null && !error.isNull) {
-                return errorMessage(error) ?: "içerik yüklenemedi"
-            }
-            val result = root.get("result") ?: continue
-            if (result.get("files")?.isEmpty == false) return null
+    suspend fun checkContent(ref: AceContentRef): String? {
+        val url = ref.checkUrl()
+        val body = runCatching { app.get(url).text }.getOrNull()
+            ?: return "içerik kontrol edilemedi"
+        val root = runCatching { mapper.readTree(body) }.getOrNull()
+            ?: return "içerik kontrol edilemedi"
+        val error = root.get("error")
+        if (error != null && !error.isNull) {
+            return errorMessage(error) ?: "içerik yüklenemedi"
         }
+        val result = root.get("result") ?: return "içerik bulunamadı"
+        if (result.get("files")?.isEmpty == false) return null
         return "içerik bulunamadı"
     }
 
@@ -308,6 +296,46 @@ object AceStream {
  */
 private fun JsonNode.textOrNull(): String? =
     if (this.isTextual) asText().takeIf { it.isNotBlank() } else null
+
+/**
+ * Bir Ace Stream icerik referansi.
+ *
+ * Icerik iki farkli kimlikle adreslenir ve motor bunlari **birbirinin yerine
+ * kullanmaz**. Cihazda olculen davranis:
+ *
+ * ```
+ * ?content_id=<content_id>  ->  302, calisir
+ * ?content_id=<infohash>    ->  HTTP 500
+ * ?infohash=<infohash>      ->  302, calisir
+ * ?infohash=<content_id>    ->  HTTP 500
+ * ```
+ *
+ * Arama dizini (`/search`) **infohash** dondurur; kanal listesindeki sabit
+ * degerler ise **content_id**'dir. Bu ayrim yapilmazsa arama sonucundan
+ * gelen kimlikler 500 ile reddedilir.
+ *
+ * @property value content_id veya infohash
+ * @property isInfohash Degerin infohash mi content_id mi oldugu
+ */
+data class AceContentRef(
+    val value: String,
+    val isInfohash: Boolean = false,
+) {
+    /**
+     * Oynatma adresi.
+     *
+     * Motorun bekledigi parametre kullanilir; yonlendirmeyi oynatici takip
+     * eder (motor ayni adrese 302 doner).
+     */
+    fun manifestUrl(): String =
+        "${AceStream.ENGINE_BASE}${AceStream.MANIFEST_PATH}?" +
+            (if (isInfohash) "infohash=" else "content_id=") + value
+
+    /** Dogrulama (salt okunur) adresi. */
+    fun checkUrl(): String =
+        "${AceStream.ENGINE_BASE}${AceStream.SERVICE_PATH}?api_version=3&method=get_media_files&" +
+            (if (isInfohash) "infohash=" else "content_id=") + value
+}
 
 /**
  * Ace Stream arama dizininden gelen tek bir kanal.
