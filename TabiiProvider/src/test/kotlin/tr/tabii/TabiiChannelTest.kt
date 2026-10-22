@@ -51,10 +51,35 @@ class TabiiChannelTest {
         assertEquals(150002, channel.id)
         assertEquals("trt1", channel.slug)
         assertEquals("TRT 1", channel.title)
-        assertEquals("trt1_logo.png", channel.logo)
+        // Taban adres verilmedigi icin logo uretilmiyor (kirik adres olusmaz).
+        assertNull(channel.logo)
         assertEquals(3, channel.media.size)
         assertFalse(channel.requiresLogin)
         assertEquals("https://www.tabii.com/tr/watch/live/trt1?trackId=150002", channel.pageUrl)
+    }
+
+    @Test
+    fun `logo taban adresiyle mutlak adrese donusur`() {
+        // Sayfada gorseller yalnizca dosya adi olarak duruyor; mutlak adres
+        // image_cdn_path ile olusuyor.
+        val channel = parse(trt1Json).toTabiiChannel("https://cms-tabii-public-image.tabii.com/int")!!
+        assertEquals(
+            "https://cms-tabii-public-image.tabii.com/int/trt1_logo.png",
+            channel.logo,
+        )
+    }
+
+    @Test
+    fun `taban adres sondaki boslukla da calisir`() {
+        val channel = parse(trt1Json).toTabiiChannel("https://cdn.example.com/int/")!!
+        assertEquals("https://cdn.example.com/int/trt1_logo.png", channel.logo)
+    }
+
+    @Test
+    fun `taban adres bilinmiyorsa logo null`() {
+        // Kirik adres yerine gorsel gosterilmez.
+        val channel = parse(trt1Json).toTabiiChannel(null)!!
+        assertNull(channel.logo)
     }
 
     @Test

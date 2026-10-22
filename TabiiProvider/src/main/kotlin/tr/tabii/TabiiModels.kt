@@ -57,15 +57,38 @@ data class TabiiChannel(
 }
 
 /** `__NEXT_DATA__` içindeki kanal nesnesini modele çevirir. */
-internal fun JsonNode.toTabiiChannel(): TabiiChannel? {
+internal fun JsonNode.toTabiiChannel(imageBaseUrl: String? = null): TabiiChannel? {
     val id = get("id")?.asInt() ?: return null
     if (id <= 0) return null
     val slug = get("slug")?.asText()?.takeIf { it.isNotBlank() } ?: return null
     val title = get("title")?.asText()?.takeIf { it.isNotBlank() } ?: return null
     val loginStatus = get("loginStatus")?.asText().orEmpty()
-    val logo = NextData.findByKey(get("images"), "key", "logo")?.get("name")?.asText()
+    val logo = resolveLogo(imageBaseUrl)
     val media = get("media")?.mapNotNull { it.toTabiiMedia() }.orEmpty()
     return TabiiChannel(id, slug, title, loginStatus, logo, media)
+}
+
+/**
+ * Kanal logosunun tam adresini uretir.
+ *
+ * `__NEXT_DATA__` icindeki gorseller yalnizca dosya adi olarak saklanir
+ * ("22938_0-0-1500-1500.png"); mutlak adres sayfanin `props.config`
+ * bolumundeki `image_cdn_path` degeriyle birlesim olusturur:
+ *
+ * ```
+ * https://cms-tabii-public-image.tabii.com/int/22938_0-0-1500-1500.png
+ * ```
+ *
+ * Taban adres bilinmiyorsa `null` doner; boylece kirik bir adres yerine
+ * gorsel gosterilmez.
+ */
+private fun JsonNode.resolveLogo(imageBaseUrl: String?): String? {
+    val name = NextData.findByKey(get("images"), "key", "logo")?.get("name")?.asText()
+        ?.takeIf { it.isNotBlank() }
+        ?: return null
+    if (name.startsWith("http")) return name
+    val base = imageBaseUrl?.trim()?.trimEnd('/')?.takeIf { it.isNotBlank() } ?: return null
+    return "$base/$name"
 }
 
 private fun JsonNode.toTabiiMedia(): TabiiMedia? {

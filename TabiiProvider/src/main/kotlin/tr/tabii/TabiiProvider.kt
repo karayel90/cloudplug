@@ -73,8 +73,12 @@ class TabiiProvider : MainAPI() {
         }
         val html = app.get(seedUrl, referer = "$mainUrl/").text
         val tree = NextData.tree(html) ?: return emptyList()
+        // Logolar sayfada yalnizca dosya adi olarak duruyor; mutlak adres bu
+        // taban adresle olusuyor.
+        val imageBase = NextData.node(tree, "props", "config", "image_cdn_path")
+            ?.asText()?.takeIf { it.isNotBlank() }
         val array = NextData.node(tree, "props", "pageProps", "liveChannels") ?: return emptyList()
-        val channels = array.mapNotNull { it.toTabiiChannel() }
+        val channels = array.mapNotNull { it.toTabiiChannel(imageBase) }
         if (channels.isNotEmpty()) {
             cachedChannels = channels
             cachedAt = now
