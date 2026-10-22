@@ -66,36 +66,19 @@ object AceStream {
     /** Kanalin yayinda oldugunu bildiren arama sonucu durumu. */
     const val STATUS_AVAILABLE = 2
 
-    /**
-     * Bir arama sonucunun kabul edilebilmesi icin gereken en dusuk puan.
-     *
-     * Bu esigin altindaki sonuclar kanal adiyla ilgisizdir; secilirse yanlis
-     * kanal oynatilir.
-     */
-    const val MIN_MATCH_SCORE = 100
-
     private val mapper = ObjectMapper()
 
     /** Verilen metin gecerli bir Ace Stream content ID mi? */
     fun isContentId(value: String): Boolean = CONTENT_ID.matches(value)
 
-    /** Content ID'den HLS manifest adresi uretir. */
-    fun manifestUrl(contentId: String): String = "$ENGINE_BASE$MANIFEST_PATH?id=$contentId"
-
-    /** Content ID'den JSON biçimli manifest adresi uretir. */
-    fun manifestJsonUrl(contentId: String): String =
-        "$ENGINE_BASE$MANIFEST_PATH?format=json&id=$contentId"
-
     /**
-     * Manifest adresinden content ID'yi cikarir.
+     * Content ID'den HLS manifest adresi uretir.
      *
-     * `load()` cagrisindaki yayin adresinden content ID'yi geri almak icin
-     * kullanilir.
+     * Motorun oynatma ucu `content_id` parametresini kabul eder (`id` eski
+     * takma adidir). Yayin adresi motorun HTTP ucundan dogrudan gelir;
+     * yonlendirmeyi oynatici takip eder.
      */
-    fun contentIdFromManifest(url: String): String? {
-        val raw = url.substringAfter("id=", "").substringBefore('&').trim()
-        return raw.takeIf { isContentId(it) }
-    }
+    fun manifestUrl(contentId: String): String = "$ENGINE_BASE$MANIFEST_PATH?content_id=$contentId"
 
     /** Content ID'den `acestream://` adresi uretir. */
     fun acestreamUrl(contentId: String): String = "acestream://$contentId"
@@ -203,49 +186,34 @@ object AceStream {
      * deneme bir oturum acar. Adaylar sirayla denenirken oturumlar
      * birbirinin uzerine biner, hatta ayni anda calisan Ace Player'in
      * yayinini keser. Salt okunur dogrulama bu yuzden oturum acmaz.
+     *
+     * @return Basarili ise `null`, aksi halde motorun hata mesaji.
      */
-    suspend fun canLoad(contentId: String): Boolean {
+    suspend fun checkContent(contentId: String): String? {
         for (param in CONTENT_PARAMS) {
             val url = "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_media_files&$param=$contentId"
             val body = runCatching { app.get(url).text }.getOrNull() ?: continue
             val root = runCatching { mapper.readTree(body) }.getOrNull() ?: continue
-            root.get("error")?.let { if (!it.isNull) continue }
+            val error = root.get("error")
+            if (error != null && !error.isNull) {
+                return errorMessage(error) ?: "içerik yüklenemedi"
+            }
             val result = root.get("result") ?: continue
-            if (result.get("files")?.isEmpty == false) return true
+            if (result.get("files")?.isEmpty == false) return null
         }
-        return false
+        return "içerik bulunamadı"
     }
 
-    /**
-     * Motorun dondurdugu hata mesajini cikarir.
-     *
-     * Beklenen yapi:
-     * ```json
-     * {"error":{"message":"unknown content id","code":404},"response":null}
-     * ```
-     *
-     * Bazi surumler hatayi dogrudan metin olarak doner:
-     * ```json
-     * {"error":"unknown content id","response":null}
-     * ```
-     */
-    internal fun parseEngineError(body: String): String? {
-        val root = runCatching { mapper.readTree(body) }.getOrNull() ?: return null
-        val error = root.get("error") ?: return null
-        if (error.isNull) return null
-
-        // Hata dogrudan metin olarak gelmisse.
-        if (error.isTextual) {
-            return error.asText().takeIf { it.isNotBlank() } ?: "bilinmeyen hata"
-        }
-
+    /** Motor hata nesnesinden okunabilir bir mesaj cikarir. */
+    private fun errorMessage(error: JsonNode): String? {
+        if (error.isTextual) return error.asText().takeIf { it.isNotBlank() }
         val message = error.get("message")?.asText()?.takeIf { it.isNotBlank() }
         val code = error.get("code")?.takeIf { it.isNumber }?.asInt()
         return when {
             message != null && code != null -> "$message (kod $code)"
             message != null -> message
             code != null -> "hata kodu $code"
-            else -> "bilinmeyen hata"
+            else -> null
         }
     }
 
@@ -311,40 +279,6 @@ object AceStream {
     }
 
     /**
-     * Arama sonuclari arasindan istenen kanala en yakin olani secer.
-     *
-     * Eslesme **token** tabanlidir: "beIN SPORTS 1" ile "beIN SPORTS 1 TR"
-     * farkli yayinlardir ve karistirilmamalidir. Yalnizca ayni kelimeleri
-     * iceren sonuclar kabul edilir.
-     */
-    internal fun pickBest(results: List<AceStreamResult>, name: String): AceStreamResult? {
-        if (results.isEmpty()) return null
-        val target = tokens(name)
-        if (target.isEmpty()) return null
-        val best = results.maxByOrNull { score(it, target) } ?: return null
-        return best.takeIf { score(it, target) >= MIN_MATCH_SCORE }
-    }
-
-    /**
-     * Bir arama sonucunun hedef kanala ne kadar uydugunu puanlar.
-     *
-     * @param target Hedef kanalin token listesi.
-     */
-    internal fun score(result: AceStreamResult, target: List<String>): Int {
-        val candidate = tokens(result.name)
-        var points = when {
-            candidate == target -> 1000
-            candidate.isEmpty() -> -100
-            // Ayni kelimeler, farkli sira ("SPORTS BEIN 1" gibi)
-            candidate.toSet() == target.toSet() -> 900
-            else -> -100
-        }
-        if (result.status == STATUS_AVAILABLE) points += 50
-        points += (result.availability * 10).toInt()
-        return points
-    }
-
-    /**
      * Kanal adini kucuk harf, alfanumerik kelimelere boler.
      *
      * "beIN SPORTS 1 TR" -> [bein, sports, 1, tr]
@@ -363,10 +297,6 @@ object AceStream {
         val candidate = tokens(candidateName)
         return candidate == target || candidate.toSet() == target.toSet()
     }
-
-    /** Kanal adlarini karsilastirmak icin sadelestirir. */
-    internal fun normalize(value: String): String =
-        value.lowercase().replace(Regex("[^a-z0-9]+"), "")
 }
 
 /**

@@ -164,11 +164,12 @@ class TabiiProvider : MainAPI() {
         // oynatir.
         var streamId = candidates.firstOrNull() ?: contentId
         for (candidate in candidates) {
-            if (AceStream.canLoad(candidate)) {
+            val error = AceStream.checkContent(candidate)
+            if (error == null) {
                 streamId = candidate
                 break
             }
-            Log.d(TAG, "$title: $candidate yüklenemedi, sıradakine geçiliyor")
+            Log.d(TAG, "$title: $candidate yüklenemedi ($error), sıradakine geçiliyor")
         }
 
         return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(streamId)) {

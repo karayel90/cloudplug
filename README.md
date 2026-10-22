@@ -8,7 +8,7 @@
 sağlayan eklenti deposu. **tabii** canlı TV kanalları (TRT 1, TRT 2,
 TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi,
 TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları),
-**Ace Stream** (P2P) kanalları (beIN SPORTS, Setanta) ve **TR Kanalları**
+**Ace Stream** (P2P) kanalları (beIN SPORTS HD 1-3 [TR]) ve **TR Kanalları**
 (TV8, ATV, Star TV, DMAX) destekleniyor.
 
 * [Cloudstream deposu](https://github.com/recloudstream/cloudstream)
@@ -52,7 +52,7 @@ kayıtlı; CS3 ana sayfasında iki sekme olarak görünürler:
 | Sağlayıcı | Kanal grubu | Türler |
 |---|---|---|
 | **tabii** | tabii.com canlı TV kanalları | Live |
-| **tabii** | Ace Stream (P2P) kanalları: beIN SPORTS, Setanta | Live |
+| **tabii** | Ace Stream (P2P) kanalları: beIN SPORTS HD 1-3 [TR] | Live |
 | **TR Kanalları** | TV8, ATV, Star TV (STARTV), DMAX canlı yayın kanalları | Live |
 
 ## 🔌 Nasıl çalışıyor?
@@ -120,19 +120,30 @@ kendi sitesini `Referer` olarak gönderir.
 ### Ace Stream kanalları
 
 Ana sayfadaki **Ace Stream** bölümü, tabii'de olmayan ucretli kanalları
-(beIN SPORTS 1-4, beIN SPORTS HABER, Setanta Sports) P2P ağı üzerinden sunar.
+(beIN SPORTS HD 1-3 [TR]) P2P ağı üzerinden sunar.
 
 Ace Stream kanalları 40 haneli bir **content ID** ile adreslenir
 (`acestream://<content-id>`). CS3'ün oynatıcısı `acestream://` şemasını
 çözemediği için yayın, cihazdaki Ace Stream motorunun HTTP ucundan istenir:
 
 ```
-http://127.0.0.1:6878/ace/manifest.m3u8?id=<content-id>
+http://127.0.0.1:6878/ace/manifest.m3u8?content_id=<content-id>
 ```
+
+| Kanal | Content ID |
+|---|---|
+| beIN SPORTS HD 1 [TR] | `118416583faa3fb4f03800173429b6b844b43a52` |
+| beIN SPORTS HD 2 [TR] | `48bee10b883f17c7186d60f1e8022dca0ba41a05` |
+| beIN SPORTS HD 3 [TR] | `ed81c333815247536edfcdb2755147e8c4144d62` |
 
 **Gereksinim:** cihazda [Ace Stream Engine](https://www.acestream.org/) kurulu
 ve çalışıyor olmalıdır (varsayılan port `6878`). Motor kapalıysa eklenti
 oynatma hatası yerine açıklayıcı bir mesaj gösterir.
+
+> **Aynı anda tek uygulama açık olmalı.** Ace Stream motorunun **tek bir
+> oynatıcısı** vardır; Ace Player açıkken CS3'te yayın açmak (ya da tersi)
+> motorun oynatıcısını devralır ve yayın kesilir. Test sırasında Ace
+> Player'ı kapatın.
 
 Content ID'ler yayıncı dosyayı yeniden yüklediğinde değişebildiği için,
 oynatma anında motorun arama dizininden güncel ID tekrar bulunur; eklendeki
