@@ -50,7 +50,6 @@ object AceStreamChannels {
             searchNames = listOf(
                 "beIN SPORTS HD 1 [TR]",
                 "beIN Sports HD 1 TR",
-                "beIN SPORTS 1 TR",
             ),
             contentIds = listOf(
                 "118416583faa3fb4f03800173429b6b844b43a52",
@@ -63,7 +62,6 @@ object AceStreamChannels {
             searchNames = listOf(
                 "beIN SPORTS HD 2 [TR]",
                 "beIN Sports HD 2 TR",
-                "beIN SPORTS 2 TR",
             ),
             contentIds = listOf(
                 "48bee10b883f17c7186d60f1e8022dca0ba41a05",
@@ -76,7 +74,6 @@ object AceStreamChannels {
             searchNames = listOf(
                 "beIN SPORTS HD 3 [TR]",
                 "beIN Sports HD 3 TR",
-                "beIN SPORTS 3 TR",
             ),
             contentIds = listOf(
                 "ed81c333815247536edfcdb2755147e8c4144d62",

@@ -67,6 +67,17 @@ class AceStreamChannelsTest {
     }
 
     @Test
+    fun `arama adlari sadece HD varyantlarini icerir`() {
+        // "beIN SPORTS 1 TR" (SD) farkli bir yayin; karistirmamak icin
+        // arama adlarinda yer almaz.
+        for (c in AceStreamChannels.ALL) {
+            for (n in c.searchNames) {
+                assertTrue("$n: HD olmali", n.contains("HD"))
+            }
+        }
+    }
+
+    @Test
     fun `kanal adlari Turkce HD versiyonlari`() {
         // Kanal adlari Ace Player'daki gosterimden alindi.
         for (c in AceStreamChannels.ALL) {

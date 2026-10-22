@@ -139,9 +139,10 @@ object AceStream {
     /**
      * Bir kanalin denenecek content ID'lerini dondurur.
      *
-     * Once motorun arama dizininden gelen, kanal adiyla **tam eslesen** tum
-     * sonuclar kullanilabilirlige gore siralanarak gelir; ardindan sabit
-     * (yedek) ID'ler eklenir.
+     * Once **sabit (pinned) ID'ler** gelir: bunlar kullanicinin Ace Player
+     * ekranindan alinan ve o an gecerli olan degerlerdir, dolayisiyla
+     * otoritatifdir. Ardindan motorun arama dizininden gelen, kanal adiyla
+     * **tam eslesen** sonuclar gelir; bunlar ID dondugunde devreye girer.
      *
      * Ace Stream'de ayni kanalin P2P aginda **birden fazla yayinci
      * (uploader) node'u** olabiliyor ve her birinin kendi content ID'si var.
@@ -151,8 +152,8 @@ object AceStream {
      *
      * @param searchNames Motor dizininde aranacak adlar, oncelik sirasiyla.
      *   Her ad icin ayri arama yapilir ve sonuclar **token** eslesmesiyle
-     *   filtrelenir; boylece "beIN SPORTS 1" aramasi "beIN SPORTS 1 TR"
-     *   sonucunu yanlislikla almaz.
+     *   filtrelenir; boylece "beIN SPORTS HD 1 [TR]" aramasi
+     *   "beIN SPORTS 1 TR" sonucunu yanlislikla almaz.
      */
     suspend fun resolveContentIds(
         searchNames: List<String>,
@@ -169,10 +170,10 @@ object AceStream {
                         (it.availability * 1000).toInt()
                 }
                 .map { it.contentId }
-            // Onceki (oncelikli) adin sonuclari basta olsun.
             result += matches
         }
-        return (result + pinned).filter { isContentId(it) }.distinct()
+        // Sabit ID'ler once: kullanicinin dogruladigi degerler onceliklidir.
+        return (pinned + result).filter { isContentId(it) }.distinct()
     }
 
     /**
