@@ -154,27 +154,21 @@ class TabiiProvider : MainAPI() {
         // Once motorun arama dizinindeki guncel ID'ler, sonra sabit yedekler.
         // Ayni kanalin birden fazla yayinci node'u olabiliyor; hepsi denenir.
         val candidates = known
-            ?.let { AceStream.resolveContentIds(it.name, it.contentIds) }
+            ?.let { AceStream.resolveContentIds(it.searchNames, it.contentIds) }
             ?: listOf(contentId)
         Log.d(TAG, "$title: ${candidates.size} content ID denenecek")
 
-        var streamId = contentId
-        var diagnostic = ""
+        // Dogrulama SALT-OKUNUR bir API ile yapilir; oynatma oturumu
+        // acilmaz. Aksi halde motorun TEK oynaticisi adaylar arasinda
+        // gezinir ve (ayni anda calisan Ace Player dahil) yanlis kanal
+        // oynatir.
+        var streamId = candidates.firstOrNull() ?: contentId
         for (candidate in candidates) {
-            val playback = AceStream.resolvePlayback(candidate)
-            if (playback.isResolved) {
+            if (AceStream.canLoad(candidate)) {
                 streamId = candidate
-                diagnostic = ""
                 break
             }
-            if (diagnostic.isEmpty()) diagnostic = playback.diagnostic()
-        }
-
-        if (diagnostic.isNotEmpty()) {
-            // Cozumlenemedi ama motorun redirect modu bazen calisiyor; bu
-            // yuzden hata firlatmak yerine manifest adresiyle devam edilir ve
-            // tanilama loglanir.
-            Log.w(TAG, "$title çözümlenemedi: $diagnostic")
+            Log.d(TAG, "$title: $candidate yüklenemedi, sıradakine geçiliyor")
         }
 
         return newLiveStreamLoadResponse(title, AceStream.acestreamUrl(contentId), AceStream.manifestUrl(streamId)) {
@@ -192,16 +186,15 @@ class TabiiProvider : MainAPI() {
         // Ace Stream yayinlari motorun yerel HTTP ucundan gelir; ek basliga
         // ihtiyac yoktur.
         if (data.startsWith(AceStream.ENGINE_BASE)) {
-            // Motor varsayilan olarak 302 yonlendirmesi yapar. CS3'ün
-            // DefaultHttpDataSource'i farkli protokollere yonlendirmeyi takip
-            // etmez ve 3xx yanitlar BAD_HTTP_STATUS hatasina yol acar. Bu
-            // yuzden dogrudan oynatma adresi cozulur; cozulemezse manifest
-            // adresi birakilir (motorun redirect modu bazen calisir).
-            val contentId = AceStream.contentIdFromManifest(data)
-            val playback = contentId?.let { AceStream.resolvePlayback(it) }
-            playback?.engineError?.let { Log.w(TAG, "Oynatma adresi çözülemedi: $it") }
+            // Manifest adresi oldugu gibi gecirilir: motor oynatma oturumunu
+            // kendisi acar ve yonlendirmeyi oynatici takip eder.
+            //
+            // Burada ayrica bir oynatma adresi cozulmez; `format=json` ile
+            // her istek bir oturum acar ve motorun TEK oynaticisi adaylar
+            // arasinda gezinir. Ayni anda calisan Ace Player'in yayini da
+            // bu yuzden kesilir.
             callback.invoke(
-                newExtractorLink(name, name, playback?.url ?: data) {
+                newExtractorLink(name, name, data) {
                     type = ExtractorLinkType.M3U8
                     quality = Qualities.Unknown.value
                 }

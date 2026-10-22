@@ -47,7 +47,35 @@ class AceStreamChannelsTest {
     }
 
     @Test
-    fun `content id ile kanal bulma`() {
+    fun `her kanalin arama adi var`() {
+        for (c in AceStreamChannels.ALL) {
+            assertTrue("${c.id}: arama adi bos", c.searchNames.isNotEmpty())
+            for (n in c.searchNames) {
+                assertTrue("${c.id}: bos arama adi", n.isNotBlank())
+            }
+        }
+    }
+
+    @Test
+    fun `arama adlari kanal basina benzersiz`() {
+        // Ayni arama adi iki farkli kanalda kullanilirsa arama sonuclari
+        // karisir ve yanlis kanal oynatilir.
+        val all = AceStreamChannels.ALL.flatMap { it.searchNames }.map { it.lowercase() }
+        assertEquals("yinelenen arama adi", all.size, all.toSet().size)
+    }
+
+    @Test
+    fun `turkce varyant arama adlari onecelikli`() {
+        // Turkce yayinlar oncelikli olmali; "beIN Sports 1 TR" gibi.
+        for (c in AceStreamChannels.ALL) {
+            assertTrue("${c.id}: arama adi yok", c.searchNames.isNotEmpty())
+        }
+        val bs1 = AceStreamChannels.byId("bein-sports-1")!!
+        assertTrue(bs1.searchNames.first().contains("TR"))
+    }
+
+    @Test
+    fun `content ID'ye gore kanal bulur`() {
         val channel = AceStreamChannels.byContentId("118416583faa3fb4f03800173429b6b844b43a52")
         assertEquals("beIN SPORTS 1", channel?.name)
         // buyuk/kucuk harf fark etmemeli

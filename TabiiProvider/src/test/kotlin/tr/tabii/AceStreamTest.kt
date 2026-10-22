@@ -214,15 +214,6 @@ class AceStreamTest {
     }
 
     @Test
-    fun `tanilama metni ham motor yanitini icerir`() {
-        val body = """{"error":"Content not found","response":null}"""
-        val playback = AceStreamPlayback(null, AceStream.parseEngineError(body), body)
-        val text = playback.diagnostic()
-        assertTrue(text.contains("Content not found"))
-        assertTrue("ham yanit gorunmeli", text.contains("\"error\""))
-    }
-
-    @Test
     fun `motor hatasiz yanit hata mesaji sayilmaz`() {
         assertNull(AceStream.parseEngineError("""{"response":{"playback_url":"x"},"error":null}"""))
         assertNull(AceStream.parseEngineError("""{"response":{}}"""))
@@ -230,53 +221,9 @@ class AceStreamTest {
     }
 
     @Test
-    fun `cozumleme sonucu tanilama metni uretir`() {
-        val withError = AceStreamPlayback(null, "unknown content id (kod 404)", "")
-        assertTrue(withError.diagnostic().contains("unknown content id"))
-        assertFalse(withError.isResolved)
-
-        val withUrl = AceStreamPlayback("http://127.0.0.1:6878/ace/m/x/y.m3u8", null, "")
-        assertTrue(withUrl.isResolved)
-
-        val notJson = AceStreamPlayback(null, null, "#EXTM3U\n#EXT-X-VERSION:3")
-        assertTrue(notJson.diagnostic().contains("format=json"))
-
-        assertTrue(AceStreamPlayback(null, null, "").diagnostic().contains("boş"))
-    }
-    @Test
-    fun `json manifest yanitindan oynatma adresi alinir`() {
-        val json = """{"response":{"playback_url":"http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8","stat_url":"x","command_url":"y","infohash":"$beinSports1","playback_session_id":"z","is_live":1,"is_encrypted":0},"error":null}"""
-        assertEquals(
-            "http://127.0.0.1:6878/ace/m/$beinSports1/abc.m3u8",
-            AceStream.parsePlaybackUrl(json),
-        )
-    }
-
-    @Test
-    fun `motor hata donerse oynatma adresi olmaz`() {
-        val json = """{"error":{"message":"unknown content id","code":404},"response":null}"""
-        assertNull(AceStream.parsePlaybackUrl(json))
-    }
-
-    @Test
-    fun `format desteklenmiyorsa oynatma adresi olmaz`() {
-        // Motor JSON desteklemiyorsa govde m3u8 olur; JSON parse edilemez.
-        assertNull(AceStream.parsePlaybackUrl("#EXTM3U\n#EXT-X-VERSION:3\n"))
-        assertNull(AceStream.parsePlaybackUrl(""))
-    }
-
-    @Test
-    fun `manifest adresinden content id cikarilir`() {
-        val url = AceStream.manifestUrl(beinSports1)
-        assertEquals(beinSports1, AceStream.contentIdFromManifest(url))
-        assertEquals(beinSports1, AceStream.contentIdFromManifest(AceStream.manifestJsonUrl(beinSports1)))
-        assertNull(AceStream.contentIdFromManifest("https://www.tabii.com/tr/watch/live/trt1"))
-    }
-
-    @Test
-    fun `json manifest adresi format parametresi icerir`() {
-        assertTrue(AceStream.manifestJsonUrl(beinSports1).contains("format=json"))
-        assertTrue(AceStream.manifestJsonUrl(beinSports1).contains("id=$beinSports1"))
+    fun `manifest adresi content id iceriyor`() {
+        assertTrue(AceStream.manifestUrl(beinSports1).contains(beinSports1))
+        assertTrue(AceStream.manifestUrl(beinSports1).contains("/ace/manifest.m3u8"))
     }
 
     @Test
@@ -291,14 +238,42 @@ class AceStreamTest {
     }
 
     @Test
-    fun `onek eslesmesi kabul edilir`() {
+    fun `onek eslesmesi artik kabul edilmiyor`() {
+        // Onceki davranis: duzleştirilmis string karsilastirmasinda onek
+        // eslesmesi 400 puan aliyordu; "beIN SPORTS 1 TR" yanlis kanal
+        // olarak secilebiliyordu.
         val results = listOf(
             AceStreamResult("beIN SPORTS 1 HD", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", 2, 1.0),
         )
-        assertEquals(
-            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            AceStream.pickBest(results, "beIN SPORTS 1")?.contentId,
-        )
+        assertNull(AceStream.pickBest(results, "beIN SPORTS 1"))
+    }
+
+    @Test
+    fun `token eslesmesi farkli yayinlari karistirmaz`() {
+        // "beIN SPORTS 1" ile "beIN SPORTS 1 TR" FARKLI yayinlardir.
+        val target = AceStream.tokens("beIN SPORTS 1")
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 1 TR", target))
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 1 HD", target))
+        assertFalse(AceStream.matchesTokens("BEIN SPORTS 1 FR", target))
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 2", target))
+
+        assertTrue(AceStream.matchesTokens("beIN SPORTS 1", target))
+        assertTrue(AceStream.matchesTokens("Bein Sports 1", target))
+        assertTrue(AceStream.matchesTokens("bein sports 1", target))
+    }
+
+    @Test
+    fun `token sirasi degisse de eslesir`() {
+        val target = AceStream.tokens("beIN SPORTS 1")
+        assertTrue(AceStream.matchesTokens("SPORTS BEIN 1", target))
+    }
+
+    @Test
+    fun `token listesi dogru ayristirilir`() {
+        assertEquals(listOf("bein", "sports", "1"), AceStream.tokens("beIN SPORTS 1"))
+        assertEquals(listOf("bein", "sports", "1", "tr"), AceStream.tokens("beIN SPORTS 1 TR"))
+        assertEquals(listOf("setanta", "sports"), AceStream.tokens("Setanta Sports"))
+        assertTrue(AceStream.tokens("!!!").isEmpty())
     }
 
     @Test
@@ -310,7 +285,7 @@ class AceStreamTest {
             AceStreamResult("beIN SPORTS 1", "2222222222222222222222222222222222222222", 2, 0.9),
             AceStreamResult("beIN SPORTS 1", "3333333333333333333333333333333333333333", 2, 0.4),
         )
-        val target = AceStream.normalize("beIN SPORTS 1")
+        val target = AceStream.tokens("beIN SPORTS 1")
         val ordered = results
             .filter { AceStream.score(it, target) >= AceStream.MIN_MATCH_SCORE }
             .sortedByDescending {

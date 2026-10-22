@@ -58,13 +58,7 @@ object AceStream {
      * dizininin dondurdugu degerdir. Motor surumune gore hangisinin
      * tanindigi degisebiliyor.
      */
-    private val PLAYBACK_PARAMS = listOf("content_id", "id", "infohash")
-
-    /** Cozumleme isteginin kac kez denenecegi. */
-    private const val PLAYBACK_ATTEMPTS = 3
-
-    /** Yeniden denemeler arasindaki bekleme (ms). */
-    private const val PLAYBACK_RETRY_DELAY_MS = 700L
+    private val CONTENT_PARAMS = listOf("content_id", "id", "infohash")
 
     /** Icerik kimligi: 40 haneli onaltilik ozet. */
     private val CONTENT_ID = Regex("\\A[0-9a-fA-F]{40}\\z")
@@ -162,7 +156,7 @@ object AceStream {
     /**
      * Bir kanalin denenecek content ID'lerini dondurur.
      *
-     * Once motorun arama dizininden gelen, kanal adiyla eslesen tum
+     * Once motorun arama dizininden gelen, kanal adiyla **tam eslesen** tum
      * sonuclar kullanilabilirlige gore siralanarak gelir; ardindan sabit
      * (yedek) ID'ler eklenir.
      *
@@ -171,57 +165,55 @@ object AceStream {
      * Bunlardan biri olurken digeri oluyor. Bu yuzden tek bir ID'ye guvenmek
      * yerine hepsi denenir; aksi halde tek bir yayincinin kapanmasi kanali
      * tamamen cokertiyor.
+     *
+     * @param searchNames Motor dizininde aranacak adlar, oncelik sirasiyla.
+     *   Her ad icin ayri arama yapilir ve sonuclar **token** eslesmesiyle
+     *   filtrelenir; boylece "beIN SPORTS 1" aramasi "beIN SPORTS 1 TR"
+     *   sonucunu yanlislikla almaz.
      */
-    suspend fun resolveContentIds(name: String, pinned: List<String>): List<String> {
-        val target = normalize(name)
-        val searched = search(name)
-            .filter { score(it, target) >= MIN_MATCH_SCORE }
-            .sortedByDescending {
-                (if (it.status == STATUS_AVAILABLE) 10_000 else 0) +
-                    (it.availability * 1000).toInt()
-            }
-            .map { it.contentId }
-        return (searched + pinned).filter { isContentId(it) }.distinct()
+    suspend fun resolveContentIds(
+        searchNames: List<String>,
+        pinned: List<String>,
+    ): List<String> {
+        val result = mutableListOf<String>()
+        for (query in searchNames) {
+            val target = tokens(query)
+            if (target.isEmpty()) continue
+            val matches = search(query)
+                .filter { matchesTokens(it.name, target) }
+                .sortedByDescending {
+                    (if (it.status == STATUS_AVAILABLE) 10_000 else 0) +
+                        (it.availability * 1000).toInt()
+                }
+                .map { it.contentId }
+            // Onceki (oncelikli) adin sonuclari basta olsun.
+            result += matches
+        }
+        return (result + pinned).filter { isContentId(it) }.distinct()
     }
 
     /**
-     * Bir content ID icin dogrudan oynatma adresini cozer.
+     * Bir content ID'nin motor tarafindan tanindigini **salt okunur** bir
+     * API ile dogrular.
      *
-     * Motor varsayilan olarak `format=redirect` ile 302 yonlendirmesi yapar.
-     * CS3'ün `DefaultHttpDataSource` ayari farkli protokollere yonlendirmeyi
-     * takip etmez (`allowCrossProtocolRedirects` varsayilan false) ve 3xx
-     * yanitlari `ERROR_CODE_IO_BAD_HTTP_STATUS` hatasina yol acar. Bu yuzden
-     * yonlendirme oynaticiya birakilmaz; motorun JSON API'sinden dogrudan
-     * oynatma adresi alinir.
+     * Dogrulama icin `/server/api?method=get_media_files` kullanilir; bu
+     * uc yalnizca icerik bilgisini okur ve **oynatma oturumu acmaz**.
      *
-     * Motor `format=json` desteklemiyorsa yanit bir m3u8 olur; bu durumda
-     * [AceStreamPlayback.url] `null` kalir ve manifest adresi kullanilir.
-     *
-     * @return Cozumleme sonucu; motorun hata mesajini da icerir.
+     * Bu onemli: motorun tek bir oynaticisi var ve `format=json` ile her
+     * deneme bir oturum acar. Adaylar sirayla denenirken oturumlar
+     * birbirinin uzerine biner, hatta ayni anda calisan Ace Player'in
+     * yayinini keser. Salt okunur dogrulama bu yuzden oturum acmaz.
      */
-    suspend fun resolvePlayback(contentId: String): AceStreamPlayback {
-        var last = AceStreamPlayback(null, null, "")
-        for (param in PLAYBACK_PARAMS) {
-            val url = "$ENGINE_BASE$MANIFEST_PATH?format=json&$param=$contentId"
-            // Motor yayini ilk denemede hazirlayamiyor olabiliyor; "kafasa gore
-            // aciliyor" davranisi bu yaris kaynakli. Birkac kez yeniden
-            // deneniyor.
-            for (attempt in 0 until PLAYBACK_ATTEMPTS) {
-                if (attempt > 0) delay(PLAYBACK_RETRY_DELAY_MS)
-                val body = runCatching { app.get(url).text }.getOrNull() ?: continue
-                parsePlaybackUrl(body)?.let { return AceStreamPlayback(it, null, body) }
-                val error = parseEngineError(body)
-                if (error != null) {
-                    // Hata sabitse yeniden denemek anlamli degil.
-                    last = AceStreamPlayback(null, error, body)
-                    break
-                }
-                // JSON degilse motor format=json'i desteklemiyor olabilir.
-                last = AceStreamPlayback(null, null, body)
-            }
-            if (last.url != null || last.engineError != null) return last
+    suspend fun canLoad(contentId: String): Boolean {
+        for (param in CONTENT_PARAMS) {
+            val url = "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_media_files&$param=$contentId"
+            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
+            val root = runCatching { mapper.readTree(body) }.getOrNull() ?: continue
+            root.get("error")?.let { if (!it.isNull) continue }
+            val result = root.get("result") ?: continue
+            if (result.get("files")?.isEmpty == false) return true
         }
-        return last
+        return false
     }
 
     /**
@@ -255,25 +247,6 @@ object AceStream {
             code != null -> "hata kodu $code"
             else -> "bilinmeyen hata"
         }
-    }
-
-    /**
-     * `format=json` yanitindan dogrudan oynatma adresini cikarir.
-     *
-     * Beklenen yapi:
-     * ```json
-     * {"response":{"playback_url":"http://127.0.0.1:6878/ace/m/<id>/<sid>.m3u8",
-     *   "infohash":"...","is_live":1},"error":null}
-     * ```
-     *
-     * Motor hatali donerse ya da format desteklenmiyorsa `null`.
-     */
-    internal fun parsePlaybackUrl(body: String): String? {
-        val root = runCatching { mapper.readTree(body) }.getOrNull() ?: return null
-        // Motor hata donduyse oynatma adresi yoktur.
-        root.get("error")?.let { if (!it.isNull) return null }
-        val response = root.get("response") ?: return null
-        return response.get("playback_url")?.asText()?.takeIf { it.isNotBlank() }
     }
 
     /**
@@ -340,35 +313,55 @@ object AceStream {
     /**
      * Arama sonuclari arasindan istenen kanala en yakin olani secer.
      *
-     * Once tam eslesme, sonra onek/icerik eslesmesi olan sonuclar tercih
-     * edilir. Yayinda olan (status = 2) ve kullanilabilirligi yuksek sonuclar
-     * daha yuksek puan alir.
-     *
-     * Hicbir sonuc yeterince benzeşmiyorsa `null` doner: yanlis bir kanali
-     * oynatmaktansa eski kimligi kullanmak daha guvenlidir.
+     * Eslesme **token** tabanlidir: "beIN SPORTS 1" ile "beIN SPORTS 1 TR"
+     * farkli yayinlardir ve karistirilmamalidir. Yalnizca ayni kelimeleri
+     * iceren sonuclar kabul edilir.
      */
     internal fun pickBest(results: List<AceStreamResult>, name: String): AceStreamResult? {
         if (results.isEmpty()) return null
-        val target = normalize(name)
+        val target = tokens(name)
         if (target.isEmpty()) return null
         val best = results.maxByOrNull { score(it, target) } ?: return null
         return best.takeIf { score(it, target) >= MIN_MATCH_SCORE }
     }
 
-    /** Bir arama sonucunun hedef kanala ne kadar uydugunu puanlar. */
-    internal fun score(result: AceStreamResult, normalizedTarget: String): Int {
-        val candidate = normalize(result.name)
+    /**
+     * Bir arama sonucunun hedef kanala ne kadar uydugunu puanlar.
+     *
+     * @param target Hedef kanalin token listesi.
+     */
+    internal fun score(result: AceStreamResult, target: List<String>): Int {
+        val candidate = tokens(result.name)
         var points = when {
-            candidate == normalizedTarget -> 1000
-            candidate.startsWith(normalizedTarget) -> 400
-            normalizedTarget.startsWith(candidate) -> 300
-            candidate.contains(normalizedTarget) -> 200
-            normalizedTarget.contains(candidate) -> 100
+            candidate == target -> 1000
+            candidate.isEmpty() -> -100
+            // Ayni kelimeler, farkli sira ("SPORTS BEIN 1" gibi)
+            candidate.toSet() == target.toSet() -> 900
             else -> -100
         }
         if (result.status == STATUS_AVAILABLE) points += 50
         points += (result.availability * 10).toInt()
         return points
+    }
+
+    /**
+     * Kanal adini kucuk harf, alfanumerik kelimelere boler.
+     *
+     * "beIN SPORTS 1 TR" -> [bein, sports, 1, tr]
+     */
+    internal fun tokens(value: String): List<String> =
+        value.lowercase().split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
+
+    /**
+     * Iki kanal adi ayni kelimeleri iceriyor mu?
+     *
+     * "beIN SPORTS 1" ile "beIN SPORTS 1 TR" eslesmez; boylece arama sirasinda
+     * farkli bir yayin (TR / HD / FR) secilmez.
+     */
+    internal fun matchesTokens(candidateName: String, target: List<String>): Boolean {
+        if (target.isEmpty()) return false
+        val candidate = tokens(candidateName)
+        return candidate == target || candidate.toSet() == target.toSet()
     }
 
     /** Kanal adlarini karsilastirmak icin sadelestirir. */
@@ -399,37 +392,3 @@ data class AceStreamResult(
     val status: Int?,
     val availability: Double,
 )
-
-/**
- * Bir content ID icin oynatma adresi cozumleme sonucu.
- *
- * @property url Dogrudan oynatma adresi; motor JSON API'sinden alindiysa
- *   doludur, aksi halde `null`.
- * @property engineError Motorun dondurdugu hata mesaji.
- * @property response Motorun ham yaniti (tanilama icin).
- */
-data class AceStreamPlayback(
-    val url: String?,
-    val engineError: String?,
-    val response: String,
-) {
-    /** Cozumleme basarili mi? */
-    val isResolved: Boolean get() = url != null
-
-    /**
-     * Kullaniciya gosterilecek kisa tanilama metni.
-     *
-     * Motorun gercek yanitini her zaman icerir; boylece "neden oynatilmiyor"
-     * sorusu ekran bakarak cevaplanabilir.
-     */
-    fun diagnostic(): String {
-        val raw = response.trim().take(200)
-        return when {
-            engineError != null -> "Motor yanıtı: $engineError${if (raw.isNotEmpty()) " | $raw" else ""}"
-            raw.startsWith("#EXT") ->
-                "Motor JSON yerine m3u8 döndürdü (format=json desteklenmiyor olabilir): $raw"
-            raw.isNotEmpty() -> "Motor yanıtı: $raw"
-            else -> "Motor boş yanıt döndürdü."
-        }
-    }
-}
