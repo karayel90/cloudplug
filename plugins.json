@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=tabii.com&sz=%size%",
-        "fileHash": "sha256-d5b074cf77d76517bf0ff7037418f7882f2cfe0fe1da0c338cbc6874941fab69",
+        "fileHash": "sha256-2e95aee70b9a0f9224feaa308e667cd8f0bae13c845555ca060224597203122f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/karayel90/cloudplug",
-        "fileSize": 41164,
+        "fileSize": 44474,
         "status": 1,
         "language": "tr",
         "authors": [
@@ -13,9 +13,9 @@
         "tvTypes": [
             "Live"
         ],
-        "version": 13,
+        "version": 14,
         "internalName": "TabiiProvider",
-        "description": "T\u00fcrkiye'nin canl\u0131 TV kanallar\u0131: tabii kanallar\u0131 (TRT 1, TRT 2, TRT Spor, TRT Haber, TRT \u00c7ocuk, TRT Belgesel, TRT M\u00fczik, TRT T\u00fcrk, TRT K\u00fcrdi, TRT Arap\u00ee, TRT Avaz, TRT WORLD, TRT Gen\u00e7, TRT eba), Ace Stream (P2P) kanallar\u0131 (beIN SPORTS, Setanta) ve TR Kanallar\u0131 (TV8, ATV, Star TV, DMAX).",
+        "description": "T\u00fcrkiye'nin canl\u0131 TV kanallar\u0131: tabii kanallar\u0131 (TRT 1, TRT 2, TRT Spor, TRT Haber, TRT \u00c7ocuk, TRT Belgesel, TRT M\u00fczik, TRT T\u00fcrk, TRT K\u00fcrdi, TRT Arap\u00ee, TRT Avaz, TRT WORLD, TRT Gen\u00e7, TRT eba), Ace Stream (P2P) kanallar\u0131 (beIN SPORTS) ve TR Kanallar\u0131 (TV8, ATV, Star TV, DMAX ve daha fazlas\u0131; topluluk M3U listesinden otomatik g\u00fcncellenir).",
         "url": "https://raw.githubusercontent.com/karayel90/cloudplug/builds/TabiiProvider.cs3",
         "name": "TabiiProvider"
     }
