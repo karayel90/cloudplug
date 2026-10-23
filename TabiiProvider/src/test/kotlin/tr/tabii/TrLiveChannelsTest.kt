@@ -193,6 +193,32 @@ class TrLiveChannelsTest {
         assertEquals(1, result.size)
     }
 
+    @Test
+    fun `liste disi kanallar kataloga eklenir`() {
+        val keys = TrLiveChannels.withExtraChannels(emptyList()).map { M3u.normalizeName(it.title) }
+        assertEquals(listOf("showtv", "beyaztv", "dmax", "tlc"), keys)
+    }
+
+    @Test
+    fun `ek kanal daha yuksek cozunurlukle m3u kaydini ezer`() {
+        // M3U'daki Beyaz TV 720p kaydı ölü/eksik; ek kayıt 1080p olduğu için
+        // çift kanal temizliğinde o kazanmalı.
+        val result = M3u.dedupeByBestResolution(
+            TrLiveChannels.withExtraChannels(
+                listOf(entry("Beyaz TV (720p)", "https://ornek.stream/beyaz-720p.m3u8"))
+            )
+        )
+        val beyaz = result.first { M3u.normalizeName(it.title) == "beyaztv" }
+        assertEquals("Beyaz TV (1080p)", beyaz.title)
+        assertEquals("https://beyaztv-live.daioncdn.net/beyaztv/beyaztv_1080p.m3u8", beyaz.url)
+    }
+
+    @Test
+    fun `ek kanallarin refereri korunur`() {
+        val showTv = ExtraChannels.ENTRIES.first { M3u.normalizeName(it.title) == "showtv" }
+        assertEquals("https://www.showtv.com.tr/", TrLiveChannels.refererFor(showTv))
+    }
+
     private fun entry(
         title: String,
         url: String = "https://ornek.stream/" + M3u.normalizeName(title) + ".m3u8",

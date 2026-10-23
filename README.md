@@ -102,6 +102,9 @@ eklenti güncellemesi gerekmez.
   Filtre adres bazlıdır: liste aynı kanal için yeni bir adres yayınladığında
   kanal eklenti güncellemesi gerekmeden geri gelir. Kanalın ölü 1080p kaydı
   varsa çalışan daha düşük çözünürlüklü kaydı kullanılır.
+- Topluluk listesinde hiç bulunmayan **Show TV, Beyaz TV, DMAX ve TLC**,
+  yayıncıların kendi sitelerindeki resmi HLS adresleriyle `ExtraChannels`
+  üzerinden eklenir. NTV listede zaten çalışan bir kayıtla mevcuttur.
 
 ### Ace Stream kanalları
 

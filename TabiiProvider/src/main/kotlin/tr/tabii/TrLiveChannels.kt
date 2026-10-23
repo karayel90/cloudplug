@@ -84,7 +84,7 @@ object TrLiveChannels {
         // Ulusal genel içerik yayıncıları
         "atv", "nowtv", "kanald", "startv", "tv8", "trt1", "showtv",
         // Haber
-        "trthaber", "haberturktv", "ntv", "ahaber", "halktv", "tv100",
+        "trthaber", "haberturktv", "cnnturk", "ntv", "ahaber", "halktv", "tv100",
         "tele1", "24tv", "haberglobal", "flashhabertv", "ulketv", "akittv",
         "tvnet", "tytturk", "bloomberght",
         // Spor
@@ -96,7 +96,7 @@ object TrLiveChannels {
         "trtcocuk", "minikacocuk", "minikago", "trtdiyanetcocuk",
         "trtebailkokul", "trtebaortaokul", "trtebalise",
         // Belgesel
-        "trtbelgesel", "nationalgeographic", "nationalgeographicwild",
+        "trtbelgesel", "dmax", "tlc", "nationalgeographic", "nationalgeographicwild",
         // Müzik
         "trtmuzik", "powerturk", "powerturktv", "kralpoptv", "number1tv",
         // Kamu / uluslararası
@@ -147,6 +147,17 @@ object TrLiveChannels {
         entries.filterNot { it.url in DeadStreams.URLS }
 
     /**
+     * Listede eksik olan doğrulanmış kanalları ekler ([ExtraChannels]).
+     *
+     * Ek kanallar listenin sonuna eklenir; çift kanal temizliği en yüksek
+     * çözünürlüklü kaydı seçerken M3U'daki bir kayıt aynı çözünürlükteyse
+     * listedeki kayıt korunur. Böylece liste ileride aynı kanalı daha iyi
+     * kalitede yayınlarsa otomatik olarak o kullanılır.
+     */
+    fun withExtraChannels(entries: List<M3u.Entry>): List<M3u.Entry> =
+        entries + ExtraChannels.ENTRIES
+
+    /**
      * Kanal listesini çeker; önbellek doluyorsa ağa çıkmaz.
      *
      * Liste boş dönerse (ağ hatası, ayrıştırma boşluğu) son başarılı önbellek
@@ -158,7 +169,7 @@ object TrLiveChannels {
         if (cached.isNotEmpty() && now - cachedAt < CACHE_TTL_MS) return cached
 
         val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
-        val parsed = withoutDeadStreams(M3u.parse(text))
+        val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
         val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
         if (entries.isNotEmpty()) {
             cached = entries
