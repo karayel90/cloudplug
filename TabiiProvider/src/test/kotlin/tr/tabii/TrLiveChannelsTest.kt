@@ -196,7 +196,7 @@ class TrLiveChannelsTest {
     @Test
     fun `liste disi kanallar kataloga eklenir`() {
         val keys = TrLiveChannels.withExtraChannels(emptyList()).map { M3u.normalizeName(it.title) }
-        assertEquals(listOf("showtv", "beyaztv", "dmax", "tlc"), keys)
+        assertEquals(listOf("showtv", "beyaztv", "tv2", "dmax", "tlc"), keys)
     }
 
     @Test
@@ -217,6 +217,33 @@ class TrLiveChannelsTest {
     fun `ek kanallarin refereri korunur`() {
         val showTv = ExtraChannels.ENTRIES.first { M3u.normalizeName(it.title) == "showtv" }
         assertEquals("https://www.showtv.com.tr/", TrLiveChannels.refererFor(showTv))
+    }
+
+    @Test
+    fun `tv2 cnbc-e kanalinin hemen ardina yerlesir`() {
+        // TV2 popülerlik listesinde yok; M3U sırasını korusaydı en sona
+        // düşerdi. INSERT_AFTER ile CNBC-e'nin arkasına sabitlenir.
+        val sorted = TrLiveChannels.sortByPopularity(
+            listOf(
+                entry("Diyar TV (720p)"),
+                entry("CNBC-e"),
+                entry("TV2 (1080p)"),
+                entry("ATV (1080p)"),
+            )
+        )
+        val placed = TrLiveChannels.placeAfter(sorted)
+        assertEquals(
+            listOf("ATV (1080p)", "Diyar TV (720p)", "CNBC-e", "TV2 (1080p)"),
+            placed.map { it.title },
+        )
+    }
+
+    @Test
+    fun `capa kanal yoksa sira degismez`() {
+        // CNBC-e bir gün M3U'dan düşerse TV2 taşınmamalı; sıralama bozulmadan
+        // kalmalı.
+        val entries = listOf(entry("Alfa TV (720p)"), entry("TV2 (1080p)"))
+        assertEquals(entries.map { it.title }, TrLiveChannels.placeAfter(entries).map { it.title })
     }
 
     private fun entry(

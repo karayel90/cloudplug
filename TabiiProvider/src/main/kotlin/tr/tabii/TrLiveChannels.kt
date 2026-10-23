@@ -107,6 +107,19 @@ object TrLiveChannels {
     /** Çözünürlük belirten sonekler; popülerlik eşleşmesinde tolere edilir. */
     private val QUALITY_SUFFIXES = setOf("4k", "8k", "hd", "fhd", "uhd", "sd")
 
+    /**
+     * Popülerlik listesinin dışında kalan bir kanalı, seçilen bir komşusunun
+     * hemen ardına sabitler (kanal → çapa kanal).
+     *
+     * [POPULARITY] yalnızca "öne al" sırası verir; listede olmayan kanallar
+     * M3U sırasını korur ve yeni eklenen kanallar listenin sonuna düşer.
+     * TV2 gibi bir kanalı listede rastgele bir komşusunun (ör. CNBC-e) arkasına
+     * yerleştirmek için bu harita kullanılır.
+     */
+    private val INSERT_AFTER: Map<String, String> = mapOf(
+        "tv2" to "cnbce",
+    )
+
     private var cached: List<M3u.Entry> = emptyList()
     private var cachedAt: Long = 0L
 
@@ -133,6 +146,27 @@ object TrLiveChannels {
             if (normalized.startsWith(base) && suffix in QUALITY_SUFFIXES) return index
         }
         return POPULARITY.size
+    }
+
+    /**
+     * [INSERT_AFTER] ile eşlenen kanalları çapa kanalın hemen ardına taşır.
+     *
+     * Çapa ya da taşınacak kanal listede yoksa (ör. çapa bir gün M3U'dan
+     * düşerse) sıralama olduğu gibi bırakılır; bu yüzden işlem sessizce
+     * atlanır, hata verilmez.
+     */
+    fun placeAfter(entries: List<M3u.Entry>): List<M3u.Entry> {
+        val result = entries.toMutableList()
+        INSERT_AFTER.forEach { (key, anchor) ->
+            val from = result.indexOfFirst { M3u.normalizeName(it.title) == key }
+            val anchorAt = result.indexOfFirst { M3u.normalizeName(it.title) == anchor }
+            if (from < 0 || anchorAt < 0 || from == anchorAt + 1) return@forEach
+            val entry = result.removeAt(from)
+            // Çıkarılan kanal çapadan önceyse çapanın indeksi bir azaldı.
+            val anchorNow = if (from < anchorAt) anchorAt - 1 else anchorAt
+            result.add(anchorNow + 1, entry)
+        }
+        return result
     }
 
     /**
@@ -170,7 +204,7 @@ object TrLiveChannels {
 
         val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
         val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
-        val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
+        val entries = placeAfter(sortByPopularity(M3u.dedupeByBestResolution(parsed)))
         if (entries.isNotEmpty()) {
             cached = entries
             cachedAt = now
