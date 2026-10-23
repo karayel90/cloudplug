@@ -93,6 +93,10 @@ eklenti güncellemesi gerekmez.
 - Bilinen Daion CDN kanalları (TV8, Star TV, DMAX, NTV, Kanal D) için listede
   referer yoksa kanalın kendi sitesi `Referer` olarak eklenir; bu CDN'ler
   başlıksız isteği reddediyor.
+- Kanallar ana sayfada **izlenme popülerliğine** göre sıralanır (ulusal
+  yayıncılar üstte); sıralama `TrLiveChannels.POPULARITY` listesinden tek
+  yerden düzenlenebilir. Listede olmayan kanallar sona, alfabetik sırayla
+  eklenir.
 
 ### Ace Stream kanalları
 

@@ -99,4 +99,71 @@ class TrLiveChannelsTest {
         )
         assertEquals("https://www.tv8.com.tr/", TrLiveChannels.refererFor(entry))
     }
+
+    @Test
+    fun `populer kanallar one siralanir`() {
+        val sorted = TrLiveChannels.sortByPopularity(
+            listOf(
+                entry("TRT Müzik (720p)"),
+                entry("Halk TV (1080p)"),
+                entry("Kanal D (1080p)"),
+                entry("ATV (1080p)"),
+            )
+        )
+        assertEquals(
+            listOf("ATV (1080p)", "Kanal D (1080p)", "Halk TV (1080p)", "TRT Müzik (720p)"),
+            sorted.map { it.title },
+        )
+    }
+
+    @Test
+    fun `bilinmeyen kanallar kendi arasinda sirasini korur`() {
+        // Sıralamada olmayan kanallar M3U'daki (alfabetik) sıralarını korur;
+        // her çekilişte yer değiştirmemeleri gerekir.
+        val sorted = TrLiveChannels.sortByPopularity(
+            listOf(
+                entry("Zeta TV (720p)"),
+                entry("Alfa TV (720p)"),
+                entry("ATV (1080p)"),
+            )
+        )
+        assertEquals(
+            listOf("ATV (1080p)", "Zeta TV (720p)", "Alfa TV (720p)"),
+            sorted.map { it.title },
+        )
+    }
+
+    @Test
+    fun `cozunurluk sonekli baslik populer kanal sayilir`() {
+        // "TRT 1 4K" başlığı "trt14k" olarak düzleşir; yine de TRT 1 sayılmalı.
+        val sorted = TrLiveChannels.sortByPopularity(
+            listOf(
+                entry("Bilinmeyen TV (1080p)"),
+                entry("TRT 1 4K"),
+            )
+        )
+        assertEquals(listOf("TRT 1 4K", "Bilinmeyen TV (1080p)"), sorted.map { it.title })
+    }
+
+    @Test
+    fun `yerel atv kanali atv ile eslesmez`() {
+        // "ATV Alanya" soneki çözünürlük etiketi değil; ATV sırasına girmemeli.
+        val sorted = TrLiveChannels.sortByPopularity(
+            listOf(
+                entry("ATV Alanya (720p)"),
+                entry("ATV (1080p)"),
+            )
+        )
+        assertEquals(listOf("ATV (1080p)", "ATV Alanya (720p)"), sorted.map { it.title })
+    }
+
+    private fun entry(title: String): M3u.Entry = M3u.Entry(
+        title = title,
+        tvgId = null,
+        logo = null,
+        group = null,
+        userAgent = null,
+        referer = null,
+        url = "https://ornek.stream/" + M3u.normalizeName(title) + ".m3u8",
+    )
 }
