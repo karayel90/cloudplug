@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=tabii.com&sz=%size%",
-        "fileHash": "sha256-3bd7e516f7fdb93f364a76196a48843114c6cf01a2808e969c563c952e834b2c",
+        "fileHash": "sha256-6f44ab1d4206e3ae25ea9f6927102a8aed6c49cf107ad75bdc349f5f4bad348f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/karayel90/cloudplug",
-        "fileSize": 51845,
+        "fileSize": 52731,
         "status": 1,
         "language": "tr",
         "authors": [
@@ -13,7 +13,7 @@
         "tvTypes": [
             "Live"
         ],
-        "version": 17,
+        "version": 18,
         "internalName": "TabiiProvider",
         "description": "T\u00fcrkiye'nin canl\u0131 TV kanallar\u0131: tabii kanallar\u0131 (TRT 1, TRT 2, TRT Spor, TRT Haber, TRT \u00c7ocuk, TRT Belgesel, TRT M\u00fczik, TRT T\u00fcrk, TRT K\u00fcrdi, TRT Arap\u00ee, TRT Avaz, TRT WORLD, TRT Gen\u00e7, TRT eba), Ace Stream (P2P) kanallar\u0131 (beIN SPORTS) ve TR Kanallar\u0131 (TV8, ATV, Star TV, DMAX ve daha fazlas\u0131; topluluk M3U listesinden otomatik g\u00fcncellenir).",
         "url": "https://raw.githubusercontent.com/karayel90/cloudplug/builds/TabiiProvider.cs3",
