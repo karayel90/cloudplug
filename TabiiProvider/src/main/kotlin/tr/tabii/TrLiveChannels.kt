@@ -1,117 +1,96 @@
 package tr.tabii
 
-/**
- * Bir yayıncının canlı yayın tanımı.
- *
- * Türkiye'nin büyük yayıncıları (TV8, ATV, Star TV, DMAX) yayınlarını
- * Daion CDN üzerinden HLS olarak veriyor. Adres şablonu her kanal için sabit:
- *
- * ```
- * https://<cdn>/<kanal>/<kanal>.m3u8?app=<app-uuid>&ce=3
- * ```
- *
- * `app` değeri kanal başına sabittir ve master playlist her istekte kendini
- * yenileyen `sid` token'ları üretir. ATV dışındaki kanallarda bu adres
- * doğrudan oynatılabilir.
- *
- * @property id Cloudstream içinde kanalı tanımlayan benzersiz anahtar.
- * @property name Kanal adı (arama sonuçlarında görünür).
- * @property pageUrl Kanalın insan tarafından okunabilir canlı yayın sayfası.
- * @property manifestUrl Token'siz manifest adresi (yol + parametreler).
- * @property streamUrl İlk istekte kullanılacak tam adres.
- * @property referer CDN'in beklediği Referer başlığı.
- * @property origin CDN'in beklediği Origin başlığı.
- * @property logo Kanal logosu.
- * @property requiresToken Yayının geçici imzalı (secure token) olması gerekiyor mu?
- */
-data class TrLiveChannel(
-    val id: String,
-    val name: String,
-    val pageUrl: String,
-    val manifestUrl: String,
-    val streamUrl: String,
-    val referer: String,
-    val origin: String,
-    val logo: String?,
-    val requiresToken: Boolean = false,
-) {
-    /** Yayın adresi bu kanalın manifest adresiyle mi başlıyor? */
-    fun ownsStream(data: String): Boolean = data.startsWith(manifestUrl)
-}
+import com.lagradost.cloudstream3.app
+import tr.common.M3u
 
 /**
- * Desteklenen canlı yayın kanalları.
+ * M3U listesinden beslenen Türkçe canlı kanal kataloğu.
  *
- * Tüm kanallar aynı Daion altyapısını kullanıyor; ATV tek istisna, çünkü
- * yayın adresi `securevideotoken.tmgrup.com.tr` üzerinden imzalanmadan
- * oynatılamıyor.
+ * ## Neden sabit katalog yerine liste çekme?
+ *
+ * Yayın adresleri yayıncıların CDN değişiklikleriyle sık sık bozulur; sabit
+ * bir katalog her kırılmanın yeni sürüm çıkarmayı gerektirir. [PLAYLIST_URL]
+ * topluluk tarafından güncellenen bir M3U listesidir: eklenti listeyi
+ * çalışma anında çeker, çift kanalları temizler ve her kanal için en yüksek
+ * çözünürlüklü kaydı kullanır. Böylece adres değişiklikleri eklenti güncellemesi
+ * olmadan otomatik izlenir.
+ *
+ * ## Çift kanal temizliği
+ *
+ * Listede aynı kanal birden fazla çözünürlükte bulunabilir (örn. "ATV (360p)"
+ * ve "ATV (1080p)"). [M3u.dedupeByBestResolution] düzleştirilmiş ada göre
+ * eşleştirip en yüksek çözünürlüklü kaydı bırakır; böylece CS3 arama
+ * sonuçlarında aynı kanal iki kez görünmez.
+ *
+ * ## Referer stratejisi
+ *
+ * Bazı CDN'ler (özellikle Daion) isteği `Referer` başlığı olmadan reddeder.
+ * M3U listesi yalnızca bazı kanallar için `referrer` taşıdığından, bilinen
+ * Daion kanalları için [REFERERS] haritası yedek olarak kullanılır:
+ * önce listedeki değer, yoksa bilinen kanalın kendi sitesi.
  */
 object TrLiveChannels {
 
-    /** ATV'nin masaüstü oynatıcısının kullandığı Daion uygulama kimliği. */
-    const val ATV_APP_ID = "d1ce2d40-5256-4550-b02e-e73c185a314e"
+    /** Türkçe kanalların topluluk tarafından korunan M3U listesi. */
+    const val PLAYLIST_URL =
+        "https://raw.githubusercontent.com/omerdenizhan/IPTV-M3U/refs/heads/main/m3u/turkiye-iptv-org.m3u"
 
-    /** ATV'nin mobil oynatıcısının kullandığı Daion uygulama kimliği (yedek). */
-    const val ATV_APP_ID_MOBILE = "d5eb593f-39d9-4b01-9cfd-4748e8332cf0"
-
-    /** securevideotoken servisinin taban adresi. */
-    const val TOKEN_HOST = "https://securevideotoken.tmgrup.com.tr/webtv/secure"
-
-    val ALL: List<TrLiveChannel> = listOf(
-        TrLiveChannel(
-            id = "tv8",
-            name = "TV8",
-            pageUrl = "https://www.tv8.com.tr/canli-yayin",
-            manifestUrl = "https://tv8.daioncdn.net/tv8/tv8.m3u8",
-            streamUrl = "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788&ce=3",
-            referer = "https://www.tv8.com.tr/",
-            origin = "https://www.tv8.com.tr",
-            logo = "https://img.tv8.com.tr/s/template/v2/img/tv8-yeni.jpg",
-        ),
-        TrLiveChannel(
-            id = "atv",
-            name = "ATV",
-            pageUrl = "https://www.atv.com.tr/canli-yayin",
-            manifestUrl = "https://trkvz.daioncdn.net/atv/atv.m3u8",
-            streamUrl = "https://trkvz.daioncdn.net/atv/atv.m3u8?ce=3&app=$ATV_APP_ID",
-            referer = "https://www.atv.com.tr/",
-            origin = "https://www.atv.com.tr",
-            logo = "https://iatv.tmgrup.com.tr/site/v2/i/apple-touch-icon.png",
-            requiresToken = true,
-        ),
-        TrLiveChannel(
-            id = "startv",
-            name = "Star TV",
-            pageUrl = "https://www.startv.com.tr/canli-yayin",
-            manifestUrl = "https://dogus.daioncdn.net/startv/startv.m3u8",
-            streamUrl = "https://dogus.daioncdn.net/startv/startv.m3u8?ce=3&app=a20ac41e-bdc3-4aa1-934d-26b484480ac9",
-            referer = "https://www.startv.com.tr/",
-            origin = "https://www.startv.com.tr",
-            logo = "https://media.startv.com.tr/star-tv/images/logopic.jpg?height=160",
-        ),
-        TrLiveChannel(
-            id = "dmax",
-            name = "DMAX",
-            pageUrl = "https://www.dmax.com.tr/canli-izle",
-            manifestUrl = "https://dogus.daioncdn.net/dmax/dmax.m3u8",
-            streamUrl = "https://dogus.daioncdn.net/dmax/dmax.m3u8?ce=3&app=5a02c599-d17e-4982-9b04-090934d51af7",
-            referer = "https://www.dmax.com.tr/",
-            origin = "https://www.dmax.com.tr",
-            logo = "https://www.dmax.com.tr/favicon.ico",
-        ),
-    )
-
-    /** Kimliğe göre kanal bulur. */
-    fun byId(id: String): TrLiveChannel? = ALL.firstOrNull { it.id == id }
-
-    /** Kanalın canlı yayın sayfasına göre kanal bulur. */
-    fun byPageUrl(pageUrl: String): TrLiveChannel? = ALL.firstOrNull { it.pageUrl == pageUrl }
+    /** Kanal listesi önbellek süresi. Arama ve ana sayfa aynı listeyi kullanır. */
+    private const val CACHE_TTL_MS = 5 * 60_000L
 
     /**
-     * Oynatma adresinden kanalı bulur.
+     * Bilinen Daion CDN kanallarının referer'ları.
      *
-     * `loadLinks` eline sadece yayın adresini aldığı için, adresin hangi
-     * kanalın manifest'iyle başladığına bakarak kanalı geri çözüyoruz.
+     * Daion, `Referer` başlığı olmadan isteği reddediyor (eski TrLiveProvider
+     * kanallarında ölçülmüş davranış). M3U listesi bu başlıkları taşımaz;
+     * kanalın kendi sitesi yedek olarak gönderilir.
      */
-    fun byStreamUrl(data: String): TrLiveChannel? = ALL.firstOrNull { it.ownsStream(data) }
+    private val REFERERS = mapOf(
+        "/tv8/" to "https://www.tv8.com.tr/",
+        "/startv/" to "https://www.startv.com.tr/",
+        "/dmax/" to "https://www.dmax.com.tr/",
+        "/ntv/" to "https://www.ntv.com.tr/",
+        "/kanald/" to "https://www.kanald.com.tr/",
+        "/haberturktv/" to "https://www.haberturk.com/",
+    )
+
+    private var cached: List<M3u.Entry> = emptyList()
+    private var cachedAt: Long = 0L
+
+    /**
+     * Kanal listesini çeker; önbellek doluyorsa ağa çıkmaz.
+     *
+     * Liste boş dönerse (ağ hatası, ayrıştırma boşluğu) son başarılı önbellek
+     * korunur: geçici bir ağ sorunu, kanalların tamamen kaybolmasına yol
+     * açmamalı.
+     */
+    suspend fun channels(): List<M3u.Entry> {
+        val now = System.currentTimeMillis()
+        if (cached.isNotEmpty() && now - cachedAt < CACHE_TTL_MS) return cached
+
+        val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
+        val entries = M3u.dedupeByBestResolution(M3u.parse(text))
+        if (entries.isNotEmpty()) {
+            cached = entries
+            cachedAt = now
+        }
+        return cached
+    }
+
+    /** Yayın adresine göre kanal bulur; `load()` ve `loadLinks()` kullanır. */
+    suspend fun byUrl(url: String): M3u.Entry? =
+        channels().firstOrNull { it.url == url }
+
+    /**
+     * Kanalın oynatma anında gönderilecek referer'ını döndürür.
+     *
+     * Öncelik M3U listesinin kendi değerindedir (kaynağın bilgisidir); bilinen
+     * Daion kanalları için haritadaki değer yedektir.
+     */
+    fun refererFor(entry: M3u.Entry?): String? {
+        entry?.referer?.let { return it }
+        val url = entry?.url ?: return null
+        if (!url.contains("daioncdn.net")) return null
+        return REFERERS.entries.firstOrNull { url.contains(it.key) }?.value
+    }
 }

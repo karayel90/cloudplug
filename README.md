@@ -9,7 +9,9 @@ sağlayan eklenti deposu. **tabii** canlı TV kanalları (TRT 1, TRT 2,
 TRT Spor, TRT Haber, TRT Çocuk, TRT Belgesel, TRT Müzik, TRT Türk, TRT Kürdi,
 TRT Arapî, TRT Avaz, TRT WORLD, TRT Genç, TRT eba ve tabii kanalları),
 **Ace Stream** (P2P) kanalları (beIN SPORTS HD 1-3 [TR]) ve **TR Kanalları**
-(TV8, ATV, Star TV, DMAX) destekleniyor.
+(topluluk M3U listesinden otomatik güncellenen Türkçe canlı kanallar:
+TV8, ATV, Star TV, DMAX, Kanal D, Show TV, Fox ve daha fazlası)
+destekleniyor.
 
 * [Cloudstream deposu](https://github.com/recloudstream/cloudstream)
 * [Cloudstream Wiki](https://cloudstream.miraheze.org/wiki/Main_Page)
@@ -53,7 +55,7 @@ kayıtlı; CS3 ana sayfasında iki sekme olarak görünürler:
 |---|---|---|
 | **tabii** | tabii.com canlı TV kanalları | Live |
 | **tabii** | Ace Stream (P2P) kanalları: beIN SPORTS HD 1-3 [TR] | Live |
-| **TR Kanalları** | TV8, ATV, Star TV (STARTV), DMAX canlı yayın kanalları | Live |
+| **TR Kanalları** | Topluluk M3U listesindeki Türkçe canlı kanallar (TV8, ATV, Star TV, DMAX, Kanal D, Show TV, Fox...) | Live |
 
 ## 🔌 Nasıl çalışıyor?
 
@@ -74,48 +76,23 @@ DRM'li (FairPlay / Widevine) kayıtlar atlanır.
 Abonelik gerektiren tabii kanalları için CS3'ün provider credentials alanına
 tabii oturum çerezinizi yazarsanız isteklerde o çerez gönderilir.
 
-### TR Kanalları (TV8, ATV, Star TV, DMAX)
+### TR Kanalları (M3U listesi)
 
-Bu dört yayıncı yayınlarını **Daion CDN** üzerinden HLS olarak sunar. Adres
-şablonu kanal başına sabittir:
+Türkçe canlı kanallar topluluk tarafından korunan bir **M3U listesinden**
+otomatik çekilir. Kanal kataloğu eklenti içinde sabit değildir; çalışma anında
+listeden okunur. Böylece yayın adresleri yayıncı CDN'lerinde değiştiğinde
+eklenti güncellemesi gerekmez.
 
-```
-https://<cdn>/<kanal>/<kanal>.m3u8?app=<app-uuid>&ce=3
-```
-
-Master playlist her istekte kendini yenileyen `sid` jetonları üretir; kanal
-listesi tek bir `app` kimliğiyle sabit olduğu için eklenti listeyi bir kez
-okuyup sabit tutar.
-
-| Kanal | Manifest |
-|---|---|
-| TV8 | `tv8.daioncdn.net/tv8/tv8.m3u8` |
-| ATV | `trkvz.daioncdn.net/atv/atv.m3u8` |
-| Star TV | `dogus.daioncdn.net/startv/startv.m3u8` |
-| DMAX | `dogus.daioncdn.net/dmax/dmax.m3u8` |
-
-#### ATV: "secure token" gereksinimi
-
-ATV'in yayın adresi kendiliğinden oynatılamaz; adres yayıncının kendi
-servisinde imzalanmalıdır. Eklenti oynatma anında şu adresi çağırır:
-
-```
-GET https://securevideotoken.tmgrup.com.tr/webtv/secure?<rastgele>&url=<imzalanacak adres>
-X-isApp: false
-X-Rand: <epoch ms>
-Origin: https://www.atv.com.tr
-Referer: https://www.atv.com.tr/
-```
-
-Yanıttaki `Url` alanı `st` (başlangıç jetonu) ve `e` (bitiş zamanı)
-parametreleri eklenmiş nihai adresi verir. Jetonun ömrü ~11,5 saattir, bu
-yüzden her oynatmada tazelenir.
-
-> **`Origin` ve `Referer` başlıkları zorunludur** — bu ikisi olmadan servis
-> `403` döner.
-
-CDN istekleri `Referer` başlığı olmadan da reddedilir; eklenti her kanalın
-kendi sitesini `Referer` olarak gönderir.
+- Kaynak liste: [omerdenizhan/IPTV-M3U](https://github.com/omerdenizhan/IPTV-M3U)
+  (`m3u/turkiye-iptv-org.m3u`)
+- Liste her okunuşta **çift kanal temizliğinden** geçer: aynı kanalın birden
+  fazla çözünürlükteki kayıtlarından **en yüksek çözünürlüklü** olanı kullanılır
+  (örn. "ATV (360p)" + "ATV (1080p)" → yalnızca 1080p kalır).
+- Bazı kanalların yayın adresi özel `User-Agent` ya da `Referer` başlığı
+  bekler; listede bu değerler varsa oynatma anında gönderilir.
+- Bilinen Daion CDN kanalları (TV8, Star TV, DMAX, NTV, Kanal D) için listede
+  referer yoksa kanalın kendi sitesi `Referer` olarak eklenir; bu CDN'ler
+  başlıksız isteği reddediyor.
 
 ### Ace Stream kanalları
 

@@ -28,7 +28,7 @@ import tr.common.NextData
  * `__NEXT_DATA__` bloğu tüm kanalları ve medya adreslerini içeriyor. Bu yüzden
  * "tohum" olarak tek bir kanal sayfasını kullanıp listeyi oradan okuyoruz.
  *
- * Ayrıca tabii'de bulunmayan ucretli kanallar (beIN SPORTS, Setanta) için
+ * Ayrıca tabii'de bulunmayan ucretli kanallar (beIN SPORTS) için
  * **Ace Stream** desteği sunulur. Ace Stream P2P tabanlı bir platformdur ve
  * kanallarını "content ID" ile adresler; yayın, cihazdaki Ace Stream motorunun
  * HTTP ucu üzerinden oynatılır. Bkz. [AceStream].
