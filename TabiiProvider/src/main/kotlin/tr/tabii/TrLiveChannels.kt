@@ -15,6 +15,13 @@ import tr.common.M3u
  * çözünürlüklü kaydı kullanır. Böylece adres değişiklikleri eklenti güncellemesi
  * olmadan otomatik izlenir.
  *
+ * ## Ölü yayınlar
+ *
+ * Liste eski kayıtları da taşır: bazı adresler artık yayın vermez. Katalog
+ * oluşturulurken [DeadStreams] içindeki adresler atlanır; böylece kullanıcı
+ * açıp hata alacağı kanalları görmez. Filtre, çift kanal temizliğinden önce
+ * uygulanır; kanalın ölü 1080p kaydı yerine çalışan 720p kaydı kalır.
+ *
  * ## Çift kanal temizliği
  *
  * Listede aynı kanal birden fazla çözünürlükte bulunabilir (örn. "ATV (360p)"
@@ -129,6 +136,17 @@ object TrLiveChannels {
     }
 
     /**
+     * Ölü adresleri ayıklar ([DeadStreams]).
+     *
+     * Filtre **çift kanal temizliğinden önce** uygulanır: böylece bir kanalın
+     * en yüksek çözünürlüklü kaydı ölüyse, aynı kanalın çalışan daha düşük
+     * çözünürlüklü kaydı seçilebilir. Ters sırada yapılsaydı ölü 1080p kaydı
+     * kazanır, ardından filtrelenir ve kanal tamamen kaybolurdu.
+     */
+    fun withoutDeadStreams(entries: List<M3u.Entry>): List<M3u.Entry> =
+        entries.filterNot { it.url in DeadStreams.URLS }
+
+    /**
      * Kanal listesini çeker; önbellek doluyorsa ağa çıkmaz.
      *
      * Liste boş dönerse (ağ hatası, ayrıştırma boşluğu) son başarılı önbellek
@@ -140,7 +158,8 @@ object TrLiveChannels {
         if (cached.isNotEmpty() && now - cachedAt < CACHE_TTL_MS) return cached
 
         val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
-        val entries = sortByPopularity(M3u.dedupeByBestResolution(M3u.parse(text)))
+        val parsed = withoutDeadStreams(M3u.parse(text))
+        val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
         if (entries.isNotEmpty()) {
             cached = entries
             cachedAt = now

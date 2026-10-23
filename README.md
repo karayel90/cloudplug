@@ -97,6 +97,11 @@ eklenti güncellemesi gerekmez.
   yayıncılar üstte); sıralama `TrLiveChannels.POPULARITY` listesinden tek
   yerden düzenlenebilir. Listede olmayan kanallar sona, alfabetik sırayla
   eklenir.
+- Yayın vermeyen adresler `DeadStreams` kara listesinde tutulur ve katalog
+  oluşturulurken atlanır; böylece açılıp hata veren kanallar görünmez.
+  Filtre adres bazlıdır: liste aynı kanal için yeni bir adres yayınladığında
+  kanal eklenti güncellemesi gerekmeden geri gelir. Kanalın ölü 1080p kaydı
+  varsa çalışan daha düşük çözünürlüklü kaydı kullanılır.
 
 ### Ace Stream kanalları
 

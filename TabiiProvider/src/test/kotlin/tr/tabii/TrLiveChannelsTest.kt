@@ -157,13 +157,52 @@ class TrLiveChannelsTest {
         assertEquals(listOf("ATV (1080p)", "ATV Alanya (720p)"), sorted.map { it.title })
     }
 
-    private fun entry(title: String): M3u.Entry = M3u.Entry(
+    @Test
+    fun `olu adresler kataloga girmez`() {
+        val deadUrl = DeadStreams.URLS.first()
+        val result = TrLiveChannels.withoutDeadStreams(
+            listOf(
+                entry("Ölü TV (1080p)", deadUrl),
+                entry("Canlı TV (720p)", "https://ornek.stream/canli.m3u8"),
+            )
+        )
+        assertEquals(listOf("Canlı TV (720p)"), result.map { it.title })
+    }
+
+    @Test
+    fun `olu en iyi kayit yerine calisan kayit kullanilir`() {
+        // En yüksek çözünürlüklü kayıt ölüyse kanal kaybolmamalı; çalışan
+        // daha düşük çözünürlüklü kayıt devreye girmeli.
+        val deadUrl = DeadStreams.URLS.first()
+        val result = M3u.dedupeByBestResolution(
+            TrLiveChannels.withoutDeadStreams(
+                listOf(
+                    entry("Örnek TV (1080p)", deadUrl),
+                    entry("Örnek TV (720p)", "https://ornek.stream/ornek-tv-720p.m3u8"),
+                )
+            )
+        )
+        assertEquals(listOf("Örnek TV (720p)"), result.map { it.title })
+    }
+
+    @Test
+    fun `kara liste bilinmeyen adresi etkilemez`() {
+        val result = TrLiveChannels.withoutDeadStreams(
+            listOf(entry("Bilinmeyen TV (720p)", "https://ornek.stream/bilinmeyen.m3u8"))
+        )
+        assertEquals(1, result.size)
+    }
+
+    private fun entry(
+        title: String,
+        url: String = "https://ornek.stream/" + M3u.normalizeName(title) + ".m3u8",
+    ): M3u.Entry = M3u.Entry(
         title = title,
         tvgId = null,
         logo = null,
         group = null,
         userAgent = null,
         referer = null,
-        url = "https://ornek.stream/" + M3u.normalizeName(title) + ".m3u8",
+        url = url,
     )
 }
