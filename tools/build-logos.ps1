@@ -256,24 +256,6 @@ foreach ($m in $aceMatches) {
 "Ace Stream logosu: $($aceKeys.Count) / $($aceMatches.Count)"
 if ($aceFailed.Count -gt 0) { "Ace logo bulunamayanlar: " + ($aceFailed -join ', ') }
 
-# --- "Tum Kanallar" (zapping) karti ---
-# Kanal degistirme sayfasina acilan kart; metin tabanli basit bir gorsel.
-$tile = New-Object System.Drawing.Bitmap($canvas, $canvas)
-$tg = [System.Drawing.Graphics]::FromImage($tile)
-$tg.Clear([System.Drawing.Color]::Transparent)
-$tg.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-$tg.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-$tileFont = New-Object System.Drawing.Font('Segoe UI', 52, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
-$tileBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
-$tileFmt = New-Object System.Drawing.StringFormat
-$tileFmt.Alignment = [System.Drawing.StringAlignment]::Center
-$tileFmt.LineAlignment = [System.Drawing.StringAlignment]::Center
-$tileRect = New-Object System.Drawing.RectangleF(0, 0, $canvas, $canvas)
-$tg.DrawString("TÜM`nKANALLAR", $tileFont, $tileBrush, $tileRect, $tileFmt)
-$tg.Dispose()
-$tile.Save((Join-Path $outDir 'zapping.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-$tile.Dispose()
-
 # --- LogoAssets.kt ---
 $keyLines = ($keys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
 $tabiiKeyLines = ($tabiiKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
@@ -332,9 +314,6 @@ $aceKeyLines
     /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
     fun acePosterFor(id: String, fallback: String?): String? =
         if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
-
-    /** "Tüm Kanallar" (kanal değiştirme) kartının görseli. */
-    fun zappingPoster(): String = BASE + "zapping.png"
 }
 "@
 Set-Content -Path $assetsKt -Value $kt -Encoding UTF8

@@ -115,12 +115,6 @@ eklenti güncellemesi gerekmez.
   temada kaybolmaması için açık renkli yuvarlak bir plaka eklenir. Listede
   olmayan yeni kanallar ham `tvg-logo` adresine düşer; logo üretmek için:
   `pwsh -File tools/build-logos.ps1`.
-- **Kanal değiştirme (zapping):** Ana sayfadaki `Kanal Değiştir → Tüm Kanallar`
-  kartı kanalları bir dizinin bölümleri gibi açar. Yayın oynatılırken
-  oynatıcının sağ üstündeki **Bölümler** düğmesine basınca sağdan açılan
-  çekmecede tüm kanallar logo ve adlarıyla listelenir; seçilen kanal yayını
-  anında değiştirir. Cloudstream eklenti API'si oynatıcıya doğrudan çekmece
-  eklemeye izin vermediği için uygulamanın yerleşik bölüm çekmecesi kullanılır.
 - Topluluk listesinde hiç bulunmayan **Show TV, Beyaz TV, TV2, DMAX ve TLC**,
   yayıncıların kendi sitelerindeki resmi HLS adresleriyle `ExtraChannels`
   üzerinden eklenir. TV2, editoryal sıralamada CNBC-e'nin hemen ardında yer
