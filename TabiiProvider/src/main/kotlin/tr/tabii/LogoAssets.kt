@@ -4,20 +4,25 @@ package tr.tabii
  * Kendi barındırdığımız, kart oranına sığdırılmış kanal logoları.
  *
  * Cloudstream kartları görseli centerCrop ile çiziyor. Kanal logolarının
- * oranları çok farklı olduğu için (0.86 ile 4.16 arası) ham logo ya yanlardan
- * ya üstten/alttan kesiliyordu. [tools/build-logos.ps1] her logoyu şeffaf bir
- * kare tuvale, ortadaki güvenli alana yerleştirir; kare tuval hem yatay hem
- * dikey kartta kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
+ * oranları çok farklı olduğu için ham logo ya yanlardan ya üstten/alttan
+ * kesiliyordu. [tools/build-logos.ps1] her logoyu şeffaf bir kare tuvale,
+ * ortadaki güvenli alana yerleştirir; kare tuval hem yatay hem dikey kartta
+ * kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
  *
- * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham tvg-logo
- * adresine düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
+ * Üç kaynak ayrı klasörlerde tutulur:
+ *  - logos/        : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
+ *  - logos/tabii/  : tabii kanalları — kanalın slug değeri
+ *  - logos/ace/    : Ace Stream kanalları — kanal kimliği
+ *
+ * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham logo adresine
+ * düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
  */
 internal object LogoAssets {
 
     private const val BASE =
         "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/"
 
-    /** logos/ altında dosyası bulunan kanalların düzleştirilmiş adları. */
+    /** logos/ altında dosyası bulunan TR kanallarının düzleştirilmiş adları. */
     private val KEYS: Set<String> = setOf(
         "4utv",
         "360tv",
@@ -148,10 +153,56 @@ internal object LogoAssets {
         "tlc",
     )
 
+    /** logos/tabii/ altında dosyası bulunan tabii kanallarının slug değerleri. */
+    private val TABII_KEYS: Set<String> = setOf(
+        "tabiispor",
+        "tabiitv",
+        "trt1",
+        "tabii-cocuk",
+        "trt2",
+        "trtspor",
+        "trtsporyildiz",
+        "trthaber",
+        "trtcocuk",
+        "trtworld",
+        "trtbelgesel",
+        "trtmuzik",
+        "trtturk",
+        "trtkurdi",
+        "trtarabi",
+        "trtavaz",
+        "trtdiyanetcocuk",
+        "trteba",
+        "trtgenc",
+        "tabiispor1",
+        "tabiispor2",
+        "tabiispor3",
+        "tabiispor4",
+        "tabiispor5",
+        "tabiispor6",
+        "tabiispor7",
+        "tabiispor8",
+    )
+
+    /** logos/ace/ altında dosyası bulunan Ace Stream kanallarının kimlikleri. */
+    private val ACE_KEYS: Set<String> = setOf(
+        "bein-sports-hd-1-tr",
+        "bein-sports-hd-2-tr",
+        "bein-sports-hd-3-tr",
+    )
+
     /**
-     * Kanalın poster adresini döndürür: hazır logo varsa kendi depomuzdan,
-     * yoksa M3U'nun verdiği ham adres.
+     * TR kanalının poster adresini döndürür: hazır logo varsa kendi
+     * depomuzdan, yoksa M3U'nun verdiği ham adres.
      */
     fun posterFor(key: String, fallback: String?): String? =
         if (key in KEYS) BASE + key + ".png" else fallback
+
+    /** tabii kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun tabiiPosterFor(slug: String, fallback: String?): String? =
+        if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
+
+    /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun acePosterFor(id: String, fallback: String?): String? =
+        if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
 }

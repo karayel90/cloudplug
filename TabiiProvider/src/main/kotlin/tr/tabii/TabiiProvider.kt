@@ -88,10 +88,12 @@ class TabiiProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val channels = fetchChannels()
+        // Her iki satır da yatay kartlarla çizilir; [LogoAssets] logoları kare
+        // tuvale sığdırdığı için kart oranı değişse de logo kırpılmaz.
         return newHomePageResponse(
             listOf(
-                HomePageList(request.name, channels.map { it.toSearchResult() }),
-                HomePageList(ACE_SECTION, AceStreamChannels.ALL.map { it.toSearchResult() }),
+                HomePageList(request.name, channels.map { it.toSearchResult() }, true),
+                HomePageList(ACE_SECTION, AceStreamChannels.ALL.map { it.toSearchResult() }, true),
             )
         )
     }
@@ -119,7 +121,7 @@ class TabiiProvider : MainAPI() {
             ?: throw ErrorLoadingException("${channel.title} için oynatılabilir yayın bulunamadı")
 
         return newLiveStreamLoadResponse(channel.title, channel.pageUrl, media.url) {
-            posterUrl = channel.logo
+            posterUrl = LogoAssets.tabiiPosterFor(channel.slug, channel.logo)
             plot = if (channel.requiresLogin) {
                 "${channel.title} — tabii Premium kanalları"
             } else {
@@ -191,7 +193,7 @@ class TabiiProvider : MainAPI() {
                     AceStream.acestreamUrl(contentId),
                     "",
                 ) {
-                    posterUrl = known?.logo
+                    posterUrl = known?.let { LogoAssets.acePosterFor(it.id, it.logo) }
                     plot = "$title — Ace Stream uygulamasında açılıyor…"
                 }
             }
@@ -202,7 +204,7 @@ class TabiiProvider : MainAPI() {
             AceStream.acestreamUrl(contentId),
             working.manifestUrl(),
         ) {
-            posterUrl = known?.logo
+            posterUrl = known?.let { LogoAssets.acePosterFor(it.id, it.logo) }
             plot = "$title — Ace Stream (P2P)"
         }
     }
@@ -251,7 +253,7 @@ class TabiiProvider : MainAPI() {
             pageUrl,
             TvType.Live,
         ) {
-            posterUrl = logo
+            posterUrl = LogoAssets.tabiiPosterFor(slug, logo)
         }
     }
 
@@ -266,7 +268,9 @@ class TabiiProvider : MainAPI() {
             // adres oldugu gibi birakilir.
             fix = false,
         ) {
-            posterUrl = logo
+            // `id` burada SearchResponse alanına gölgelenir; kanalın kimliğini
+            // açıkça alıyoruz.
+            posterUrl = LogoAssets.acePosterFor(this@toSearchResult.id, logo)
         }
     }
 }

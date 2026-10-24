@@ -76,6 +76,10 @@ DRM'li (FairPlay / Widevine) kayıtlar atlanır.
 Abonelik gerektiren tabii kanalları için CS3'ün provider credentials alanına
 tabii oturum çerezinizi yazarsanız isteklerde o çerez gönderilir.
 
+tabii ve Ace Stream satırları da TR Kanalları ile aynı logo düzenini kullanır:
+logolar `logos/tabii/` ve `logos/ace/` altında kart oranına sığdırılmış hâlde
+tutulur, koyu logolar açık plakalıdır (bkz. aşağıdaki logo notu).
+
 ### TR Kanalları (M3U listesi)
 
 Türkçe canlı kanallar topluluk tarafından korunan bir **M3U listesinden**

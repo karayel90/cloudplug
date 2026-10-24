@@ -33,4 +33,25 @@ class LogoAssetsTest {
         )
         assertEquals(null, LogoAssets.posterFor("yenikanal", null))
     }
+
+    @Test
+    fun `tabii kanali slug ile kendi deposundan poster alir`() {
+        assertEquals(
+            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/tabii/trt1.png",
+            LogoAssets.tabiiPosterFor("trt1", "https://cms-tabii-public-image.tabii.com/int/22938.png"),
+        )
+        assertEquals(
+            "https://ornek.com/yeni.png",
+            LogoAssets.tabiiPosterFor("yeni-kanal", "https://ornek.com/yeni.png"),
+        )
+    }
+
+    @Test
+    fun `ace stream kanali kimligi ile kendi deposundan poster alir`() {
+        assertEquals(
+            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/ace/bein-sports-hd-1-tr.png",
+            LogoAssets.acePosterFor("bein-sports-hd-1-tr", null),
+        )
+        assertEquals(null, LogoAssets.acePosterFor("yeni-kanal", null))
+    }
 }

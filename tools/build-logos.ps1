@@ -23,7 +23,7 @@ $tmpDir = Join-Path $env:TEMP 'cloudplug-logos'
 New-Item -ItemType Directory -Force -Path $outDir, $tmpDir | Out-Null
 
 $canvas = 512      # kare tuval
-$safe = 304        # logonun sigacagi merkez kutu (tuvalin %59'u; kart kirpmasi %63)
+$safe = 296        # logonun sigacagi merkez kutu (tuvalin %58'i; kart kirpmasi %63)
 $m3uUrl = 'https://raw.githubusercontent.com/omerdenizhan/IPTV-M3U/refs/heads/main/m3u/turkiye-iptv-org.m3u'
 
 function Norm([string]$raw) {
@@ -80,7 +80,7 @@ function Save-Image($img, [string]$path) {
     $fill = $opaqueInBox / [Math]::Max(1, $boxPixels)
 
     if ($lum -lt 0.50 -and $fill -lt 0.90) {
-        $pad = 16
+        $pad = 12
         $rx = [Math]::Max(0, $minX - $pad); $ry = [Math]::Max(0, $minY - $pad)
         $rw = [Math]::Min($canvas, $maxX + $pad) - $rx
         $rh = [Math]::Min($canvas, $maxY + $pad) - $ry
@@ -192,42 +192,132 @@ foreach ($c in $channels) {
 "Uretilen logo: $ok / $($channels.Count)"
 if ($failed.Count -gt 0) { "Logo bulunamayanlar: " + ($failed -join ', ') }
 
+# --- tabii kanallari ---
+# tabii logolari 1500x1500 kare ama logonun kendisi tuvalin neredeyse
+# tamamini kapliyor; kartta yine kirpiliyor. Ayni guvenli alan kurali uygulanir.
+$tabiiDir = Join-Path $outDir 'tabii'
+$aceDir = Join-Path $outDir 'ace'
+New-Item -ItemType Directory -Force -Path $tabiiDir, $aceDir | Out-Null
+
+function Save-From-Url([string]$url, [string]$path) {
+    $tmp = Join-Path $tmpDir ([guid]::NewGuid().ToString('N'))
+    Download $url $tmp
+    $img = Try-Load $tmp
+    if (-not $img -or $img.Width -lt 32 -or $img.Height -lt 32) {
+        if ($img) { $img.Dispose() }
+        return $false
+    }
+    Save-Image $img $path
+    $img.Dispose()
+    return $true
+}
+
+$tabiiKeys = New-Object System.Collections.Generic.List[string]
+$tabiiSeed = 'https://www.tabii.com/tr/watch/live/trt1?trackId=150002'
+$seedHtml = (& curl.exe -sSL --max-time 60 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36' $tabiiSeed) -join "`n"
+$next = [regex]::Match($seedHtml, '<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', 'Singleline')
+if ($next.Success) {
+    $data = $next.Groups[1].Value | ConvertFrom-Json
+    $imageBase = $data.props.config.image_cdn_path
+    $tabiiChannels = @($data.props.pageProps.liveChannels)
+    $tabiiOk = 0; $tabiiFailed = @()
+    foreach ($c in $tabiiChannels) {
+        $lg = @($c.images) | Where-Object { $_.key -eq 'logo' } | Select-Object -First 1
+        $name = if ($lg) { $lg.name } else { $null }
+        if (-not $name) { $tabiiFailed += $c.slug; continue }
+        $logoUrl = if ($name.StartsWith('http')) { $name } else { "$imageBase/$name" }
+        $key = ($c.slug.Trim().ToLowerInvariant() -replace '[^a-z0-9-]', '-')
+        if (Save-From-Url $logoUrl (Join-Path $tabiiDir "$key.png")) {
+            $tabiiKeys.Add($key); $tabiiOk++
+        } else {
+            $tabiiFailed += $c.slug
+        }
+    }
+    "tabii logosu: $tabiiOk / $($tabiiChannels.Count)"
+    if ($tabiiFailed.Count -gt 0) { "tabii logo bulunamayanlar: " + ($tabiiFailed -join ', ') }
+} else {
+    "tabii: __NEXT_DATA__ bulunamadi"
+}
+
+# --- Ace Stream kanallari ---
+$aceKeys = New-Object System.Collections.Generic.List[string]
+$aceSrc = Get-Content (Join-Path $root 'TabiiProvider/src/main/kotlin/tr/tabii/AceStreamChannels.kt') -Raw
+$aceMatches = [regex]::Matches($aceSrc, 'id\s*=\s*"([^"]+)"[\s\S]{0,1500}?logo\s*=\s*"([^"]+)"')
+$aceFailed = @()
+foreach ($m in $aceMatches) {
+    $key = $m.Groups[1].Value
+    $logoUrl = $m.Groups[2].Value
+    if (Save-From-Url $logoUrl (Join-Path $aceDir "$key.png")) {
+        $aceKeys.Add($key)
+    } else {
+        $aceFailed += $key
+    }
+}
+"Ace Stream logosu: $($aceKeys.Count) / $($aceMatches.Count)"
+if ($aceFailed.Count -gt 0) { "Ace logo bulunamayanlar: " + ($aceFailed -join ', ') }
+
 # --- LogoAssets.kt ---
 $keyLines = ($keys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
+$tabiiKeyLines = ($tabiiKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
+$aceKeyLines = ($aceKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
 $kt = @"
 package tr.tabii
 
 /**
  * Kendi barındırdığımız, kart oranına sığdırılmış kanal logoları.
  *
- * Cloudstream kartları görseli `centerCrop` ile çiziyor. Kanal logolarının
- * oranları çok farklı olduğu için (0.86 ile 4.16 arası) ham logo ya yanlardan
- * ya üstten/alttan kesiliyordu. [tools/build-logos.ps1] her logoyu şeffaf bir
- * kare tuvale, ortadaki güvenli alana yerleştirir; kare tuval hem yatay hem
- * dikey kartta kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
+ * Cloudstream kartları görseli centerCrop ile çiziyor. Kanal logolarının
+ * oranları çok farklı olduğu için ham logo ya yanlardan ya üstten/alttan
+ * kesiliyordu. [tools/build-logos.ps1] her logoyu şeffaf bir kare tuvale,
+ * ortadaki güvenli alana yerleştirir; kare tuval hem yatay hem dikey kartta
+ * kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
  *
- * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham tvg-logo
- * adresine düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
+ * Üç kaynak ayrı klasörlerde tutulur:
+ *  - logos/        : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
+ *  - logos/tabii/  : tabii kanalları — kanalın slug değeri
+ *  - logos/ace/    : Ace Stream kanalları — kanal kimliği
+ *
+ * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham logo adresine
+ * düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
  */
 internal object LogoAssets {
 
     private const val BASE =
         "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/"
 
-    /** `logos/` altında dosyası bulunan kanalların düzleştirilmiş adları. */
+    /** logos/ altında dosyası bulunan TR kanallarının düzleştirilmiş adları. */
     private val KEYS: Set<String> = setOf(
 $keyLines
     )
 
+    /** logos/tabii/ altında dosyası bulunan tabii kanallarının slug değerleri. */
+    private val TABII_KEYS: Set<String> = setOf(
+$tabiiKeyLines
+    )
+
+    /** logos/ace/ altında dosyası bulunan Ace Stream kanallarının kimlikleri. */
+    private val ACE_KEYS: Set<String> = setOf(
+$aceKeyLines
+    )
+
     /**
-     * Kanalın poster adresini döndürür: hazır logo varsa kendi depomuzdan,
-     * yoksa M3U'nun verdiği ham adres.
+     * TR kanalının poster adresini döndürür: hazır logo varsa kendi
+     * depomuzdan, yoksa M3U'nun verdiği ham adres.
      */
     fun posterFor(key: String, fallback: String?): String? =
         if (key in KEYS) BASE + key + ".png" else fallback
+
+    /** tabii kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun tabiiPosterFor(slug: String, fallback: String?): String? =
+        if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
+
+    /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun acePosterFor(id: String, fallback: String?): String? =
+        if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
 }
 "@
 Set-Content -Path $assetsKt -Value $kt -Encoding UTF8
-"LogoAssets.kt yazildi: $($keys.Count) anahtar"
+"LogoAssets.kt yazildi: $($keys.Count) TR + $($tabiiKeys.Count) tabii + $($aceKeys.Count) Ace anahtar"
+
 
 
