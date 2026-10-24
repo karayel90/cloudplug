@@ -57,16 +57,23 @@ class TrLiveProvider : MainAPI() {
             ),
         )
 
-    override suspend fun search(query: String): List<SearchResponse> {
-        val q = query.trim()
-        val channels = TrLiveChannels.channels()
-        if (q.isEmpty()) return channels.map { it.toSearchResult() }
+    /** Hızlı aramada süresi dolmuş önbellek yenilenmez; yazarken ağ beklenmez. */
+    override suspend fun search(query: String): List<SearchResponse> =
+        search(query, allowStale = false)
+
+    override suspend fun quickSearch(query: String): List<SearchResponse> =
+        search(query, allowStale = true)
+
+    private suspend fun search(query: String, allowStale: Boolean): List<SearchResponse> {
+        // Sorgu bir kez normalize edilir; eskiden bu işlem her kanal için
+        // yeniden yapılıyordu.
+        val needle = M3u.normalizeName(query)
+        val channels = TrLiveChannels.channels(allowStale)
+        if (needle.isEmpty()) return channels.map { it.toSearchResult() }
         return channels
-            .filter { M3u.normalizeName(it.title).contains(M3u.normalizeName(q)) }
+            .filter { it.normalizedTitle.contains(needle) }
             .map { it.toSearchResult() }
     }
-
-    override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse {
         // Arama sonuçlarında adres olarak doğrudan yayın manifest'i kullanılır;
@@ -75,7 +82,7 @@ class TrLiveProvider : MainAPI() {
             ?: throw ErrorLoadingException("Kanal bulunamadı: $url")
 
         return newLiveStreamLoadResponse(entry.title, entry.url, entry.url) {
-            posterUrl = LogoAssets.posterFor(M3u.normalizeName(entry.title), entry.logo)
+            posterUrl = LogoAssets.posterFor(entry.normalizedTitle, entry.logo)
             plot = buildString {
                 append(entry.title)
                 entry.group?.let { append(" — $it") }
@@ -112,6 +119,6 @@ class TrLiveProvider : MainAPI() {
             url,
             TvType.Live,
         ) {
-            posterUrl = LogoAssets.posterFor(M3u.normalizeName(title), logo)
+            posterUrl = LogoAssets.posterFor(normalizedTitle, logo)
         }
 }

@@ -114,7 +114,8 @@ eklenti güncellemesi gerekmez.
   göründüğü için logo hiçbir düzende kesilmez. Koyu logoların arkasına, koyu
   temada kaybolmaması için açık renkli yuvarlak bir plaka eklenir. Listede
   olmayan yeni kanallar ham `tvg-logo` adresine düşer; logo üretmek için:
-  `pwsh -File tools/build-logos.ps1`.
+  `pwsh -File tools/build-logos.ps1` (betik sonunda `tools/optimize-logos.py`
+  çalışır ve PNG'leri 256 renge indirir).
 - Topluluk listesinde hiç bulunmayan **Show TV, Beyaz TV, TV2, DMAX ve TLC**,
   yayıncıların kendi sitelerindeki resmi HLS adresleriyle `ExtraChannels`
   üzerinden eklenir. TV2, editoryal sıralamada CNBC-e'nin hemen ardında yer
@@ -150,6 +151,23 @@ uyarır.
 Content ID'ler yayıncı dosyayı yeniden yüklediğinde değişebildiği için,
 oynatma anında motorun arama dizininden güncel kimlikler de bulunur ve
 sırayla denenir; eklendeki sabit kimlikler yalnızca yedektir.
+
+### Performans notları
+
+- Katalog (M3U) ve tabii kanal listesi bellekte tutulur; ana sayfa, arama ve
+  oynatma aynı listeyi paylaşır. Süre dolduğunda liste **tek sefer** yenilenir
+  (`Mutex`): ana sayfa, arama ve oynatma aynı anda istese bile ikinci bir
+  indirme başlamaz.
+- Yayın açılırken katalog yenilenmez; `byUrl()` / `channelByUrl()` yalnızca
+  bellekteki haritaya bakar. Böylece 5 dakikalık önbellek süresi dolsa bile
+  kanal değiştirme ağ beklemez. Ağ hatasında son başarılı liste korunur.
+- Hızlı arama her tuş vuruşunda çalışır ve süresi dolmuş listeyi yenilemez;
+  yazarken sonuçlar ağ beklemesiyle kesilmez. Yenileme ana sayfa açılışında
+  yapılır.
+- Kanal adı normalizasyonu kayıt başına bir kez hesaplanır (`Entry.normalizedTitle`);
+  popülerlik sırası ve arama tek harita aramasına indirgenmiştir.
+- Kart logoları 256 renkli PNG'dir (`tools/optimize-logos.py`): 157 dosya
+  ~6,9 MB yerine ~1,2 MB. İlk açılışta ve kaydırmada daha az veri iner.
 
 ## 🛠 Geliştirme
 

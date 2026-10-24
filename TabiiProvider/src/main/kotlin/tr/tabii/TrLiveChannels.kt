@@ -1,6 +1,8 @@
 package tr.tabii
 
 import com.lagradost.cloudstream3.app
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import tr.common.M3u
 
 /**
@@ -114,8 +116,36 @@ object TrLiveChannels {
     /** Çözünürlük belirten sonekler; popülerlik eşleşmesinde tolere edilir. */
     private val QUALITY_SUFFIXES = setOf("4k", "8k", "hd", "fhd", "uhd", "sd")
 
-    private var cached: List<M3u.Entry> = emptyList()
-    private var cachedAt: Long = 0L
+    /**
+     * Düzleştirilmiş kanal adı → editoryal sıra.
+     *
+     * Eskiden her kayıt için 129 anahtarlık liste baştan taranıyordu
+     * (katalog başına ~16.000 karşılaştırma). Katalog küçük olduğu için bu
+     * ölçülebilir bir yük değildi; yine de harita ile tek aramaya indirildi.
+     */
+    private val RANKS: Map<String, Int> =
+        POPULARITY.withIndex().associate { (index, key) -> key to index }
+
+    /**
+     * Katalogun değişmez anlık görüntüsü.
+     *
+     * Liste, adres haritası ve zaman damgası tek bir referansta tutulur;
+     * böylece eşzamanlı `channels()` / `byUrl()` çağrıları yarım kalmış bir
+     * güncelleme görmez.
+     */
+    private data class Catalog(
+        val entries: List<M3u.Entry>,
+        val byUrl: Map<String, M3u.Entry>,
+        val fetchedAt: Long,
+    ) {
+        fun isFresh(now: Long): Boolean = now - fetchedAt < CACHE_TTL_MS
+    }
+
+    @Volatile
+    private var catalog: Catalog? = null
+
+    /** Aynı anda birden fazla katalog indirmesini engeller. */
+    private val refreshMutex = Mutex()
 
     /**
      * Kanalları popülerlik sırasına dizer.
@@ -130,14 +160,15 @@ object TrLiveChannels {
      * çözünürlük etiketi değildir.
      */
     fun sortByPopularity(entries: List<M3u.Entry>): List<M3u.Entry> =
-        entries.sortedBy { popularityRank(M3u.normalizeName(it.title)) }
+        entries.sortedBy { popularityRank(it.normalizedTitle) }
 
     /** Düzleştirilmiş ada göre popülerlik sırası; bilinmeyenler listenin sonunda. */
     private fun popularityRank(normalized: String): Int {
-        POPULARITY.forEachIndexed { index, base ->
-            if (normalized == base) return index
-            val suffix = normalized.removePrefix(base)
-            if (normalized.startsWith(base) && suffix in QUALITY_SUFFIXES) return index
+        RANKS[normalized]?.let { return it }
+        for (suffix in QUALITY_SUFFIXES) {
+            if (normalized.endsWith(suffix)) {
+                RANKS[normalized.removeSuffix(suffix)]?.let { return it }
+            }
         }
         return POPULARITY.size
     }
@@ -168,29 +199,61 @@ object TrLiveChannels {
         entries + ExtraChannels.ENTRIES
 
     /**
-     * Kanal listesini çeker; önbellek doluyorsa ağa çıkmaz.
+     * Kanal listesini döndürür; önbellek tazeyse ağa çıkmaz.
      *
-     * Liste boş dönerse (ağ hatası, ayrıştırma boşluğu) son başarılı önbellek
-     * korunur: geçici bir ağ sorunu, kanalların tamamen kaybolmasına yol
-     * açmamalı.
+     * Önbellek süresi dolduğunda liste **tek sefer** yenilenir: ana sayfa,
+     * arama ve oynatma aynı anda çağırsa bile [refreshMutex] yalnızca bir
+     * indirmeye izin verir. İndirme başarısız olursa son başarılı katalog
+     * korunur; geçici bir ağ sorunu kanalların kaybolmasına yol açmamalı.
+     *
+     * @param allowStale `true` ise süresi dolmuş önbellek yenilenmeden
+     *   döndürülür. Hızlı arama (her tuş vuruşunda çalışır) bunu kullanır:
+     *   kullanıcı yazarken ağ beklemesi olmaz. Önbellek hiç yoksa yine de
+     *   indirme yapılır.
      */
-    suspend fun channels(): List<M3u.Entry> {
+    suspend fun channels(allowStale: Boolean = false): List<M3u.Entry> {
         val now = System.currentTimeMillis()
-        if (cached.isNotEmpty() && now - cachedAt < CACHE_TTL_MS) return cached
+        val snapshot = catalog
+        if (snapshot != null && (allowStale || snapshot.isFresh(now))) return snapshot.entries
 
-        val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
-        val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
-        val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
-        if (entries.isNotEmpty()) {
-            cached = entries
-            cachedAt = now
+        return refreshMutex.withLock {
+            val lockedNow = System.currentTimeMillis()
+            val current = catalog
+            if (current != null && current.isFresh(lockedNow)) {
+                current.entries
+            } else {
+                refresh()?.entries ?: current?.entries ?: emptyList()
+            }
         }
-        return cached
     }
 
-    /** Yayın adresine göre kanal bulur; `load()` ve `loadLinks()` kullanır. */
-    suspend fun byUrl(url: String): M3u.Entry? =
-        channels().firstOrNull { it.url == url }
+    /** Listeyi indirir, temizler ve önbelleğe yazar; başarısızsa `null`. */
+    private suspend fun refresh(): Catalog? {
+        val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return null
+        val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
+        val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
+        if (entries.isEmpty()) return null
+        val fresh = Catalog(
+            entries = entries,
+            byUrl = entries.associateBy { it.url },
+            fetchedAt = System.currentTimeMillis(),
+        )
+        catalog = fresh
+        return fresh
+    }
+
+    /**
+     * Yayın adresine göre kanal bulur; `load()` ve `loadLinks()` kullanır.
+     *
+     * Katalog varsa yalnızca bellekte aranır. Bu önemli: yayın açılırken
+     * önbellek süresi dolmuşsa ağa çıkmak, kanal değiştirmeyi gereksiz yere
+     * geciktirirdi. Adres katalogda yoksa `null` döner (kanal zaten listeden
+     * kalkmıştır). Yalnızca hiç katalog yokken indirme yapılır.
+     */
+    suspend fun byUrl(url: String): M3u.Entry? {
+        catalog?.let { return it.byUrl[url] }
+        return channels().firstOrNull { it.url == url }
+    }
 
     /**
      * Kanalın oynatma anında gönderilecek referer'ını döndürür.

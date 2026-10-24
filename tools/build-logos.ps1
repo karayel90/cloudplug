@@ -319,5 +319,17 @@ $aceKeyLines
 Set-Content -Path $assetsKt -Value $kt -Encoding UTF8
 "LogoAssets.kt yazildi: $($keys.Count) TR + $($tabiiKeys.Count) tabii + $($aceKeys.Count) Ace anahtar"
 
+# --- Boyut optimizasyonu ---
+# 512x512 seffaf PNG'ler kart basina onlarca KB tutuyor. Paletli PNG'ye
+# indirmek gorsel kaliteyi kart boyutunda degistirmeden ~%85 kazanc saglar.
+# Python/Pillow yoksa betik yine de tamamlanir; yalnizca optimizasyon atlanir.
+$python = Get-Command python -ErrorAction SilentlyContinue
+if ($null -ne $python) {
+    & $python.Source (Join-Path $PSScriptRoot 'optimize-logos.py') $outDir
+    if ($LASTEXITCODE -ne 0) { "UYARI: logo optimizasyonu basarisiz oldu (cikti yine de kullanilabilir)." }
+} else {
+    "UYARI: python bulunamadi; logolar optimize edilmedi."
+}
+
 
 

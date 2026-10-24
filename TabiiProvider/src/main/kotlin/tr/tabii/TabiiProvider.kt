@@ -19,6 +19,8 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import tr.common.NextData
 
 /**
@@ -59,31 +61,74 @@ class TabiiProvider : MainAPI() {
         seedUrl to "Canlı TV"
     )
 
-    private var cachedChannels: List<TabiiChannel> = emptyList()
-    private var cachedAt: Long = 0L
+    private data class Catalog(
+        val channels: List<TabiiChannel>,
+        val byUrl: Map<String, TabiiChannel>,
+        val fetchedAt: Long,
+    ) {
+        fun isFresh(now: Long): Boolean = now - fetchedAt < CACHE_TTL_MS
+    }
+
+    @Volatile
+    private var catalog: Catalog? = null
+
+    /** Aynı anda birden fazla sayfa indirmesini engeller. */
+    private val fetchMutex = Mutex()
 
     /**
      * Kanal listesini çeker. Kısa süreli önbellek tutulur, çünkü arama ve
      * ana sayfa her çağrıda aynı listeye ihtiyaç duyuyor.
+     *
+     * Önbellek süresi dolduğunda liste tek sefer yenilenir ([fetchMutex]);
+     * indirme başarısız olursa son başarılı liste korunur. Böylece geçici bir
+     * ağ sorunu ana sayfayı boşaltmaz.
+     *
+     * @param allowStale `true` ise süresi dolmuş önbellek yenilenmeden
+     *   döndürülür (hızlı arama).
      */
-    private suspend fun fetchChannels(force: Boolean = false): List<TabiiChannel> {
+    private suspend fun fetchChannels(allowStale: Boolean = false): List<TabiiChannel> {
         val now = System.currentTimeMillis()
-        if (!force && cachedChannels.isNotEmpty() && now - cachedAt < CACHE_TTL_MS) {
-            return cachedChannels
+        val snapshot = catalog
+        if (snapshot != null && (allowStale || snapshot.isFresh(now))) return snapshot.channels
+
+        return fetchMutex.withLock {
+            val lockedNow = System.currentTimeMillis()
+            val current = catalog
+            if (current != null && current.isFresh(lockedNow)) {
+                current.channels
+            } else {
+                refresh()?.channels ?: current?.channels ?: emptyList()
+            }
         }
-        val html = app.get(seedUrl, referer = "$mainUrl/").text
-        val tree = NextData.tree(html) ?: return emptyList()
+    }
+
+    /** Sayfayı indirir, kanalları çıkarır ve önbelleğe yazar; başarısızsa `null`. */
+    private suspend fun refresh(): Catalog? {
+        val html = runCatching { app.get(seedUrl, referer = "$mainUrl/").text }.getOrNull()
+            ?: return null
+        val tree = NextData.tree(html) ?: return null
         // Logolar sayfada yalnizca dosya adi olarak duruyor; mutlak adres bu
         // taban adresle olusuyor.
         val imageBase = NextData.node(tree, "props", "config", "image_cdn_path")
             ?.asText()?.takeIf { it.isNotBlank() }
-        val array = NextData.node(tree, "props", "pageProps", "liveChannels") ?: return emptyList()
+        val array = NextData.node(tree, "props", "pageProps", "liveChannels") ?: return null
         val channels = array.mapNotNull { it.toTabiiChannel(imageBase) }
-        if (channels.isNotEmpty()) {
-            cachedChannels = channels
-            cachedAt = now
-        }
-        return channels
+        if (channels.isEmpty()) return null
+
+        val fresh = Catalog(
+            channels = channels,
+            byUrl = buildMap {
+                for (channel in channels) {
+                    // `load()` iki adres biçimini de kabul eder: tam sayfa
+                    // adresi ve slug.
+                    put(channel.pageUrl, channel)
+                    put(channel.slug, channel)
+                }
+            },
+            fetchedAt = System.currentTimeMillis(),
+        )
+        catalog = fresh
+        return fresh
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
@@ -98,8 +143,15 @@ class TabiiProvider : MainAPI() {
         )
     }
 
-    override suspend fun search(query: String): List<SearchResponse> {
-        val tabiiResults = fetchChannels()
+    override suspend fun search(query: String): List<SearchResponse> =
+        search(query, allowStale = false)
+
+    /** Hızlı aramada süresi dolmuş önbellek yenilenmez. */
+    override suspend fun quickSearch(query: String): List<SearchResponse> =
+        search(query, allowStale = true)
+
+    private suspend fun search(query: String, allowStale: Boolean): List<SearchResponse> {
+        val tabiiResults = fetchChannels(allowStale)
             .filter { it.title.contains(query, ignoreCase = true) }
             .map { it.toSearchResult() }
         val aceResults = AceStreamChannels.ALL
@@ -108,13 +160,11 @@ class TabiiProvider : MainAPI() {
         return tabiiResults + aceResults
     }
 
-    override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
-
     override suspend fun load(url: String): LoadResponse {
         // Ace Stream kanallari `acestream://<content-id>` adresiyle gelir.
         AceStream.contentIdOf(url)?.let { return loadAceStreamChannel(it) }
 
-        val channel = fetchChannels().firstOrNull { it.pageUrl == url || it.slug == url }
+        val channel = channelByUrl(url)
             ?: throw ErrorLoadingException("Kanal bulunamadı: $url")
 
         val media = channel.playableMedia
@@ -128,6 +178,18 @@ class TabiiProvider : MainAPI() {
                 "${channel.title} — canlı yayın"
             }
         }
+    }
+
+    /**
+     * Adrese göre kanal bulur.
+     *
+     * Katalog varsa yalnızca bellekte aranır; oynatma sırasında önbellek
+     * süresi dolsa bile ağa çıkılmaz.
+     */
+    private suspend fun channelByUrl(url: String): TabiiChannel? {
+        catalog?.let { return it.byUrl[url] }
+        fetchChannels()
+        return catalog?.byUrl?.get(url)
     }
 
     /**

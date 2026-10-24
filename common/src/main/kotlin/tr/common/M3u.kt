@@ -59,10 +59,23 @@ object M3u {
     ) {
         /** Çözünürlük yüksekliği (piksel); başlıkta belirtilmemişse 0. */
         val resolution: Int = M3u.resolutionOf(title)
+
+        /**
+         * [M3u.normalizeName] ile düzleştirilmiş ad.
+         *
+         * Katalog kurulurken aynı ad üç kez normalize ediliyordu (çift kanal
+         * temizliği, popülerlik sıralaması, kart anahtarı). Sonuç kayda bağlı
+         * olduğu için bir kez hesaplanıp saklanır; `copy()` yeni kayıtta
+         * yeniden hesaplar.
+         */
+        val normalizedTitle: String = M3u.normalizeName(title)
     }
 
     private val ATTR = Regex("""([\w-]+)="([^"]*)"""")
     private val RES = Regex("""(\d{3,4})p""")
+    private val PAREN_TAG = Regex("""\([^)]*\)""")
+    private val BRACKET_TAG = Regex("""\[[^\]]*]""")
+    private val NON_ALNUM = Regex("[^a-z0-9]")
 
     /**
      * M3U metnini kayıt listesine çevirir.
@@ -124,7 +137,7 @@ object M3u {
     fun dedupeByBestResolution(entries: List<Entry>): List<Entry> {
         val best = LinkedHashMap<String, Entry>()
         for (entry in entries) {
-            val key = normalizeName(entry.title)
+            val key = entry.normalizedTitle
             if (key.isEmpty()) continue
             val current = best[key]
             if (current == null || isBetter(entry, current)) best[key] = entry
@@ -140,25 +153,30 @@ object M3u {
      * kanala işaret eder.
      */
     fun normalizeName(raw: String): String {
+        if (raw.isEmpty()) return ""
+        // Regex'ler önceden derlenir: normalizeName katalog kurulumunda her
+        // kayıt için birkaç kez çağrılıyor. Ayrıca harfler döngüde küçük
+        // harfe çevrildiği için sonda ayrı bir `lowercase()` gerekmez.
         val stripped = raw
-            .replace(Regex("""\([^)]*\)"""), " ")
-            .replace(Regex("""\[[^\]]*]"""), " ")
+            .replace(PAREN_TAG, " ")
+            .replace(BRACKET_TAG, " ")
         val ascii = buildString(stripped.length) {
             for (c in stripped) {
+                val lower = c.lowercaseChar()
                 append(
-                    when (c.lowercaseChar()) {
+                    when (lower) {
                         'ı', 'i' -> 'i'
                         'ş' -> 's'
                         'ğ' -> 'g'
                         'ü' -> 'u'
                         'ö' -> 'o'
                         'ç' -> 'c'
-                        else -> c
+                        else -> lower
                     }
                 )
             }
         }
-        return ascii.lowercase().replace(Regex("[^a-z0-9]"), "")
+        return ascii.replace(NON_ALNUM, "")
     }
 
     /**

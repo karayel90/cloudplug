@@ -109,6 +109,16 @@ class M3uTest {
     }
 
     @Test
+    fun `kayit duzlestirilmis adi hazir tutar`() {
+        // Katalog kurulurken aynı ad birkaç kez gerekiyor; Entry bunu bir kez
+        // hesaplar. Test, saklanan değerin normalizeName ile aynı kaldığını
+        // doğrular (ileride normalizasyon değişirse sessizce ayrışmasın).
+        val entry = M3u.parse(atvList)[0]
+        assertEquals(M3u.normalizeName(entry.title), entry.normalizedTitle)
+        assertEquals("atv", entry.normalizedTitle)
+    }
+
+    @Test
     fun `benzer adlar cift kanal sayilir`() {
         val entries = M3u.parse(
             """
