@@ -102,6 +102,15 @@ eklenti güncellemesi gerekmez.
   Filtre adres bazlıdır: liste aynı kanal için yeni bir adres yayınladığında
   kanal eklenti güncellemesi gerekmeden geri gelir. Kanalın ölü 1080p kaydı
   varsa çalışan daha düşük çözünürlüklü kaydı kullanılır.
+- Ana sayfa satırı **yatay kartlarla** çizilir ve kanal logoları kendi
+  depomuzdan servis edilir (`logos/`). Cloudstream kart görselini `centerCrop`
+  ile çizdiği için ham logolar — oranları 0.86 ile 4.16 arasında değişiyor —
+  kenarlardan kırpılıyordu. `tools/build-logos.ps1` her logoyu şeffaf bir kare
+  tuvalin ortasına yerleştirir; kare tuval hem yatay hem dikey kartta tam
+  göründüğü için logo hiçbir düzende kesilmez. Koyu logoların arkasına, koyu
+  temada kaybolmaması için açık renkli yuvarlak bir plaka eklenir. Listede
+  olmayan yeni kanallar ham `tvg-logo` adresine düşer; logo üretmek için:
+  `pwsh -File tools/build-logos.ps1`.
 - Topluluk listesinde hiç bulunmayan **Show TV, Beyaz TV, TV2, DMAX ve TLC**,
   yayıncıların kendi sitelerindeki resmi HLS adresleriyle `ExtraChannels`
   üzerinden eklenir. TV2, editoryal sıralamada CNBC-e'nin hemen ardında yer

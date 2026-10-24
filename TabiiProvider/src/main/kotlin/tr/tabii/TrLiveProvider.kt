@@ -1,6 +1,7 @@
 package tr.tabii
 
 import com.lagradost.cloudstream3.ErrorLoadingException
+import com.lagradost.cloudstream3.HomePageList
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -44,7 +45,17 @@ class TrLiveProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse =
-        newHomePageResponse(request.name, TrLiveChannels.channels().map { it.toSearchResult() })
+        // `horizontalImages = true` satırı 16:9 yatay kartlara çevirir.
+        // Kart görselleri `centerCrop` ile çizildiği için ham logolar (oranları
+        // 0.86–4.16 arası) kırpılıyordu; [LogoAssets] logoyu kare tuvale
+        // sığdırdığı için satır yatay da olsa dikey de olsa logo tam görünür.
+        newHomePageResponse(
+            HomePageList(
+                request.name,
+                TrLiveChannels.channels().map { it.toSearchResult() },
+                true,
+            ),
+        )
 
     override suspend fun search(query: String): List<SearchResponse> {
         val q = query.trim()
@@ -64,7 +75,7 @@ class TrLiveProvider : MainAPI() {
             ?: throw ErrorLoadingException("Kanal bulunamadı: $url")
 
         return newLiveStreamLoadResponse(entry.title, entry.url, entry.url) {
-            posterUrl = entry.logo
+            posterUrl = LogoAssets.posterFor(M3u.normalizeName(entry.title), entry.logo)
             plot = buildString {
                 append(entry.title)
                 entry.group?.let { append(" — $it") }
@@ -101,6 +112,6 @@ class TrLiveProvider : MainAPI() {
             url,
             TvType.Live,
         ) {
-            posterUrl = logo
+            posterUrl = LogoAssets.posterFor(M3u.normalizeName(title), logo)
         }
 }
