@@ -86,32 +86,5 @@ internal object ExtraChannels {
             referer = "https://www.tlc.com.tr/",
             url = "https://dogus.daioncdn.net/tlc/tlc.m3u8?app=tlc_web",
         ),
-        M3u.Entry(
-            title = "Beinsports-1-Server",
-            tvgId = "BeinSports.tr",
-            logo = "https://i.ibb.co/3fPVPLL/Bein1.png",
-            group = "Sports",
-            userAgent = null,
-            referer = null,
-            url = "https://andro.evrenesoglu213.click/checklist/androstreamlivebs1.m3u8",
-        ),
-        M3u.Entry(
-            title = "Beinsports-2-Server",
-            tvgId = "BeinSports2.tr",
-            logo = "https://i.ibb.co/9VMNBsJ/Bein2.png",
-            group = "Sports",
-            userAgent = null,
-            referer = null,
-            url = "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8",
-        ),
-        M3u.Entry(
-            title = "Beinsports-3-Server",
-            tvgId = "BeinSports3.tr",
-            logo = "https://i.ibb.co/GkX99sd/Bein3.png",
-            group = "Sports",
-            userAgent = null,
-            referer = null,
-            url = "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8",
-        ),
     )
 }

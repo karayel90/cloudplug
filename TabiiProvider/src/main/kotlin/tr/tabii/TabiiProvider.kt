@@ -135,10 +135,20 @@ class TabiiProvider : MainAPI() {
         val channels = fetchChannels()
         // Her iki satır da yatay kartlarla çizilir; [LogoAssets] logoları kare
         // tuvale sığdırdığı için kart oranı değişse de logo kırpılmaz.
+        val aceDirect = listOf(
+            Triple("Beinsports-1-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs1.m3u8", "https://i.ibb.co/3fPVPLL/Bein1.png"),
+            Triple("Beinsports-2-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8", "https://i.ibb.co/9VMNBsJ/Bein2.png"),
+            Triple("Beinsports-3-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8", "https://i.ibb.co/GkX99sd/Bein3.png"),
+        )
+        val aceResults = AceStreamChannels.ALL.map { it.toSearchResult() } + aceDirect.map { (t, u, l) ->
+            newLiveSearchResponse(t, u, TvType.Live) {
+                posterUrl = l
+            }
+        }
         return newHomePageResponse(
             listOf(
                 HomePageList(request.name, channels.map { it.toSearchResult() }, true),
-                HomePageList(ACE_SECTION, AceStreamChannels.ALL.map { it.toSearchResult() }, true),
+                HomePageList(ACE_SECTION, aceResults, true),
             )
         )
     }
@@ -161,6 +171,19 @@ class TabiiProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse {
+        // Direct HLS channels in Ace Stream section (Beinsports servers)
+        val directAce = listOf(
+            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs1.m3u8" to "Beinsports-1-Server",
+            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8" to "Beinsports-2-Server",
+            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8" to "Beinsports-3-Server",
+        )
+        val directTitle = directAce.firstOrNull { it.first == url }?.second
+        if (directTitle != null) {
+            return newLiveStreamLoadResponse(directTitle, url, url) {
+                plot = "$directTitle — doğrudan HLS yayını"
+            }
+        }
+
         // Ace Stream kanallari `acestream://<content-id>` adresiyle gelir.
         AceStream.contentIdOf(url)?.let { return loadAceStreamChannel(it) }
 
