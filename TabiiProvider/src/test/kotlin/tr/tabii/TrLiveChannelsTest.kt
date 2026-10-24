@@ -196,7 +196,7 @@ class TrLiveChannelsTest {
     @Test
     fun `liste disi kanallar kataloga eklenir`() {
         val keys = TrLiveChannels.withExtraChannels(emptyList()).map { M3u.normalizeName(it.title) }
-        assertEquals(listOf("showtv", "beyaztv", "tv2", "dmax", "tlc"), keys)
+        assertEquals(listOf("showtv", "beyaztv", "tv2", "dmax", "tlc", "beinsports1server", "beinsports2server", "beinsports3server"), keys)
     }
 
     @Test
