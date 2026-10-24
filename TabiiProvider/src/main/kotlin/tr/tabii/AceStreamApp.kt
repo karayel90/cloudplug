@@ -44,6 +44,14 @@ object AceStreamApp {
     private const val TAG = "TabiiProvider"
 
     /**
+     * Ace Stream motorunu tasiyan bilinen paket adlari.
+     *
+     * Ace Stream Engine (org.acestream.engine) ve eski Ace Stream Media
+     * surumleri (org.acestream.media) farkli paketlerle dagitiliyor.
+     */
+    private val ENGINE_PACKAGES = listOf("org.acestream.engine", "org.acestream.media")
+
+    /**
      * CS3 uygulamasinin Context'ini bulur.
      *
      * CS3'ün uygulama modulu siniflari runtime'da pluginin classloader'ina
@@ -73,6 +81,32 @@ object AceStreamApp {
     } catch (t: Throwable) {
         Log.w(TAG, "Şema kontrolü başarısız: ${t.message}")
         false
+    }
+
+    /**
+     * Ace Stream motorunun uygulamasini baslatir.
+     *
+     * Motor kapaliyken kanal acilursa kullaniciyi "ac ve geri don" adimindan
+     * kurtarmak icin provider motoru otomatik baslatir; motorun HTTP ucu
+     * kalkana dek provider [AceStream.awaitEngine] ile bekler.
+     *
+     * Yol sirasi: bilinen motor paketlerinin kendi baslatma niyetleri
+     * (nötr: uygulama acilir, oturum acilmaz) once denenir; baslatma
+     * niyeti bulunamazsa cagiran taraf `acestream://` semasiyla devir yapar.
+     */
+    fun launchEngine(context: Context): Boolean {
+        for (pkg in ENGINE_PACKAGES) {
+            try {
+                val intent = context.packageManager.getLaunchIntentForPackage(pkg) ?: continue
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Log.d(TAG, "Ace Stream motoru başlatıldı: $pkg")
+                return true
+            } catch (t: Throwable) {
+                Log.w(TAG, "Motor başlatılamadı ($pkg): ${t.message}")
+            }
+        }
+        return false
     }
 
     /**

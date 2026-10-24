@@ -148,9 +148,32 @@ yerine `acestream://` adresi doğrudan **Ace Stream uygulamasına** gönderilir
 uygulama arka planda kapatılırsa motor durur ve eklenti net bir mesajla
 uyarır.
 
+**v26 davranışları:**
+
+- **Otomatik motor başlatma:** motor kapalıysa ve Ace Stream uygulaması
+  kuruluysa eklenti uygulamayı kendisi açar ve motorun ayağa kalkmasını
+  üstel bekleme ile (üst sınır ~20 sn) bekler; motor açılmazsa "birkaç
+  saniye bekleyip tekrar dokunun" mesajı gösterilir.
+- **Çalışkan referans önbelleği:** doğrulanan çalışan referans 15 dakika
+  bellekte tutulur; kanalın sonraki açılışında tek salt-okunur istekle
+  kontrol edilir, tam arama taraması yapılmaz.
+- **Kısa zaman aşımları:** motor durum sondajı 3 sn, içerik doğrulama 8 sn,
+  arama dizini 12 sn; motor yanit vermezse dakikalarca kilitlenme olmaz.
+- **Eszamanlı doğrulama:** ilk 3 aday referans paralel doğrulanır, sonuç
+  öncelik sırasına göre tüketilir; kalani sirayla. Dogrulama yine
+  salt-okunur ucuz yapilir ve oynatma oturumu acmaz.
+- **Doğrulanmış referans devri:** `acestream://` devrinde URL'deki sabit
+  kimlik yerine doğrulanan çalışan referansın değeri gönderilir.
+- **Deneysel:** Ace Player uygulaması kurulu olmayan (yalnızca motoru olan)
+  cihazlarda, motor manifest'i CS3'e `VIDEO` tipiyle verilir; böylece CS3'ün
+  ikinci manifest isteği atlayan önizleme yükleyicisi devre dışı kalır ve
+  `HTTP 500` çift oturum hatası önlenir. Yayın için motor hâlâ şarttır.
+
 Content ID'ler yayıncı dosyayı yeniden yüklediğinde değişebildiği için,
 oynatma anında motorun arama dizininden güncel kimlikler de bulunur ve
-sırayla denenir; eklendeki sabit kimlikler yalnızca yedektir.
+sırayla denenir; eklendeki sabit kimlikler yalnızca yedektir. Arama ad
+eslesmesi esnektir: hedefin TUM kelimelerini kapsayan adaylar kabul
+edilir, fazla kelimeler (HD/TR) siralamada cezalanir.
 
 ### Performans notları
 

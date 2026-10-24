@@ -3,8 +3,13 @@ package tr.tabii
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.lagradost.cloudstream3.app
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URLEncoder
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Ace Stream motorunun HTTP arayuzu.
@@ -44,26 +49,46 @@ object AceStream {
      * Motorun durum sorgu adresleri.
      *
      * Belgeler iki farkli uc tarif ediyor; farkli surumler birini ya da
-     * digerini uygulamis olabilir.
+     * digerini uygulamis olabilir. Iki uc da ESZAMANLI sorulur ve ilk
+     * basarili yanit kullanilir.
      */
     private val STATUS_URLS = listOf(
         "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_status",
         "$ENGINE_BASE/webui/api/service?method=get_version",
     )
 
-    /**
-     * Oynatma ucunun kabul ettigi parametre adlari, deneme sirasiyla.
-     *
-     * `id` `content_id` degerinin eski takma adidir; `infohash` ise arama
-     * dizininin dondurdugu degerdir. Motor surumune gore hangisinin
-     * tanindigi degisebiliyor.
-     */
-    private val CONTENT_PARAMS = listOf("content_id", "id", "infohash")
     /** Icerik kimligi: 40 haneli onaltilik ozet. */
     private val CONTENT_ID = Regex("\\A[0-9a-fA-F]{40}\\z")
 
     /** Kanalin yayinda oldugunu bildiren arama sonucu durumu. */
     const val STATUS_AVAILABLE = 2
+
+    /** Motor durum sondajinin zaman asimi. */
+    private const val STATUS_TIMEOUT_MS = 3_000L
+
+    /** Salt-okunur icerik dogrulamasinin zaman asimi. */
+    private const val CHECK_TIMEOUT_MS = 8_000L
+
+    /** Motorun arama dizinine yapilan istegin zaman asimi. */
+    private const val SEARCH_TIMEOUT_MS = 12_000L
+
+    /** Motor durumu onbelleginin gecerlik suresi. */
+    private const val ENGINE_STATE_TTL_MS = 10_000L
+
+    /** Motor acilirken beklenecek en fazla sure. */
+    const val AWAIT_ENGINE_MS = 20_000L
+
+    /** Motor bekleme dongusunun ilk gecikmesi. */
+    private const val AWAIT_STEP_MS = 500L
+
+    /** Motor bekleme dongusunde adim gecikmesinin tavan degeri. */
+    private const val AWAIT_STEP_CAP_MS = 3_000L
+
+    /** Calisan referans onbelleginin gecerlik suresi. */
+    const val WORKING_REF_TTL_MS = 15 * 60_000L
+
+    /** Bir kerede eszamanli dogrulanacak en fazla aday sayisi. */
+    private const val CHECK_PARALLEL_LIMIT = 3
 
     private val mapper = ObjectMapper()
 
@@ -96,6 +121,14 @@ object AceStream {
         return raw.takeIf { isContentId(it) }
     }
 
+    // --- Motor durumu: paralel sondaj, kisa sureli onbellek, hazir olma beklemesi ---
+
+    /** En son olculen motor durumu. */
+    @Volatile private var engineRunning: Boolean = false
+
+    /** Motor durumunun olculdugu zaman damgasi. */
+    @Volatile private var engineProbedAt: Long = 0L
+
     /**
      * Motorun calisip calismadigini kontrol eder.
      *
@@ -103,15 +136,69 @@ object AceStream {
      * kullaniciya "Ace Stream motorunu baslat" gibi anlasilir bir hata
      * gosterebiliriz.
      *
-     * Belgeler iki farkli durum ucu tarif ediyor; ikisi de denenir.
+     * Belgeler iki farkli durum ucu tarif ediyor; ikisi de eszamanli
+     * sorulur, ilk basarili yanit kazanir. Sonuc kisa sure onbelleklendirilir:
+     * ayni ekranda art arda gelen hizli arama + yukleme cagrilari motoru
+     * defalarca sondajlamaz.
+     *
+     * @param forceRefresh true ise onbellek yok sayilir (motor bekleme
+     *   dongusu her tur taze sondaj yapar).
      */
-    suspend fun isEngineRunning(): Boolean {
-        for (url in STATUS_URLS) {
-            val body = runCatching { app.get(url).text }.getOrNull() ?: continue
-            if (body.contains("\"result\"")) return true
-        }
-        return false
+    suspend fun isEngineRunning(forceRefresh: Boolean = false): Boolean {
+        val now = System.currentTimeMillis()
+        if (!forceRefresh && isEngineStateFresh(engineProbedAt, now)) return engineRunning
+        val running = probeEngine()
+        engineProbedAt = now
+        engineRunning = running
+        return running
     }
+
+    /**
+     * Motoru acmak icin bekler; ustel bekleme ile donen sondaj yapar.
+     *
+     * Ace Stream uygulamasinda motor seferde ~2-4 saniyede ayaga kalkar;
+     * bu sureyi kapsayacak sekilde ustel bekleme ilerler.
+     */
+    suspend fun awaitEngine(maxWaitMs: Long = AWAIT_ENGINE_MS): Boolean {
+        val deadline = System.currentTimeMillis() + maxWaitMs
+        var stepMs = AWAIT_STEP_MS
+        while (System.currentTimeMillis() < deadline) {
+            if (isEngineRunning(forceRefresh = true)) return true
+            stepMs = nextBackoff(stepMs, AWAIT_STEP_CAP_MS)
+            val remaining = deadline - System.currentTimeMillis()
+            delay(minOf(stepMs, remaining.coerceAtLeast(1L)))
+        }
+        return isEngineRunning(forceRefresh = true)
+    }
+
+    /**
+     * Motorun iki durum ucunu eszamanli sondajlar; bir tek basarili yanit
+     * motorun ayakta olduguna yeter.
+     */
+    private suspend fun probeEngine(): Boolean = coroutineScope {
+        STATUS_URLS.map { async { probeStatus(it) } }.awaitAll().any { it }
+    }
+
+    private suspend fun probeStatus(url: String): Boolean =
+        getBody(url, STATUS_TIMEOUT_MS)?.contains("\"result\"") == true
+
+    /**
+     * Motor durum onbellegi henuz saglam mi?
+     *
+     * Saf yardimci; zaman kaynaklari disaridan verilir ve test edilebilir.
+     */
+    internal fun isEngineStateFresh(cachedAtMs: Long, nowMs: Long): Boolean =
+        cachedAtMs > 0L && nowMs - cachedAtMs < ENGINE_STATE_TTL_MS
+
+    /**
+     * Ustel bekleme adimini tavana kadar buyutur.
+     *
+     * Saf yardimci; motor bekleme dongusu bunu kullanir ve test edilebilir.
+     */
+    internal fun nextBackoff(currentMs: Long, capMs: Long): Long =
+        (currentMs * 2).coerceAtMost(capMs)
+
+    // --- Arama ve referans cozumleme ---
 
     /**
      * Motorun arama dizininde kanal arar.
@@ -122,7 +209,7 @@ object AceStream {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return emptyList()
         val url = "$ENGINE_BASE$SEARCH_PATH?query=${URLEncoder.encode(trimmed, "UTF-8")}&page_size=50"
-        val body = runCatching { app.get(url).text }.getOrNull() ?: return emptyList()
+        val body = getBody(url, SEARCH_TIMEOUT_MS) ?: return emptyList()
         return parseSearchResults(body)
     }
 
@@ -138,6 +225,11 @@ object AceStream {
      * Ace Stream'de ayni kanalin P2P aginda **birden fazla yayinci
      * (uploader) node'u** olabiliyor ve her birinin kendi kimligi var.
      * Bunlardan biri olurken digeri oluyor; bu yuzden hepsi denenir.
+     *
+     * Arama sonuclarinda su oncelik kullanilir:
+     * 1. Yayinda (status) olma durumu,
+     * 2. Hedefte olmayan fazla kelimelerin cezasi (bkz. [extraTokens]),
+     * 3. Kullanilabilirlik (availability).
      *
      * @param searchNames Motor dizininde aranacak adlar, oncelik sirasiyla.
      * @param pinned Kanalin bilinen content_id'leri.
@@ -155,14 +247,23 @@ object AceStream {
             if (target.isEmpty()) continue
             search(query)
                 .filter { matchesTokens(it.name, target) }
-                .sortedByDescending {
-                    (if (it.status == STATUS_AVAILABLE) 10_000 else 0) +
-                        (it.availability * 1000).toInt()
-                }
+                .sortedWith(searchOrder(target))
                 .forEach { refs += AceContentRef(it.contentId, isInfohash = true) }
         }
         return refs.distinctBy { it.value to it.isInfohash }
     }
+
+    /**
+     * Arama sonucu siralama kurali: once yayinda olanlar, sonra hedefe
+     * fazla kelimesi az olanlar (temiz eslesme), sonra daha kullanilabilir
+     * olanlar.
+     */
+    internal fun searchOrder(target: List<String>): Comparator<AceStreamResult> =
+        compareByDescending<AceStreamResult> { it.status == STATUS_AVAILABLE }
+            .thenBy { extraTokens(it.name, target) }
+            .thenByDescending { it.availability }
+
+    // --- Salt-okunur dogrulama (oynatma oturumu acmaz) ---
 
     /**
      * Bir icerik referansinin motor tarafindan tanindigini **salt okunur**
@@ -179,8 +280,7 @@ object AceStream {
      * @return Basarili ise `null`, aksi halde motorun hata mesaji.
      */
     suspend fun checkContent(ref: AceContentRef): String? {
-        val url = ref.checkUrl()
-        val body = runCatching { app.get(url).text }.getOrNull()
+        val body = getBody(ref.checkUrl(), CHECK_TIMEOUT_MS)
             ?: return "içerik kontrol edilemedi"
         val root = runCatching { mapper.readTree(body) }.getOrNull()
             ?: return "içerik kontrol edilemedi"
@@ -192,6 +292,77 @@ object AceStream {
         if (result.get("files")?.isEmpty == false) return null
         return "içerik bulunamadı"
     }
+
+    /**
+     * Aday referanslari dogrular; calisan ilk referansi dondurur.
+     *
+     * Ilk birkac aday ESZAMANLI dogrulanir (uc istek salt-okunur oldugu
+     * icin oturum acmaz, motoru yormaz) ve sonuclar ONCELIK SIRASINA gore
+     * tuketilir: sirada daha oncelikli bir aday calisiyorsa sonrasi
+     * goz ardi edilir. Kalan adaylar sirali denenir; boylece uzun aday
+     * listelerinde motorun arka yuku kontrol altinda kalir.
+     *
+     * @return Calisan referans (yoksa `null`) ve ariza tanisi
+     *   (basari durumunda `null`).
+     */
+    suspend fun workingAndError(refs: List<AceContentRef>): Pair<AceContentRef?, String?> {
+        if (refs.isEmpty()) return null to null
+        val head = refs.take(CHECK_PARALLEL_LIMIT)
+        val tail = refs.drop(CHECK_PARALLEL_LIMIT)
+
+        val headResults = coroutineScope {
+            head.map { async { it to checkContent(it) } }.awaitAll()
+        }
+        headResults.firstOrNull { it.second == null }?.let { (ref, _) ->
+            return ref to null
+        }
+        for (ref in tail) {
+            if (checkContent(ref) == null) return ref to null
+        }
+        return null to (headResults.firstOrNull { it.second != null }?.second ?: "içerik bulunamadı")
+    }
+
+    // --- Calisan referans onbellegi ---
+
+    /**
+     * Kanal anahtari -> dogrulanmis calisan referans onbellegi.
+     *
+     * Ayni kanal her yuklendiginde arama + tum adaylarin dogrulanmasi
+     * yapilmaz: onceden calisan referans biliniyorsa yalnizca o tek
+     * salt-okunur istekle kontrol edilir. Referans artik calismiyorsa veya
+     * sure dolarsa tam taramaya dusulur.
+     */
+    private val workingRefs = ConcurrentHashMap<String, Pair<Long, AceContentRef>>()
+
+    /** On bellekten calisan referansi dondurur; sure dolmussa ya da yoksa `null`. */
+    fun workingRef(key: String): AceContentRef? {
+        val entry = workingRefs[key] ?: return null
+        if (!isWorkingRefFresh(entry.first, System.currentTimeMillis())) {
+            workingRefs.remove(key, entry)
+            return null
+        }
+        return entry.second
+    }
+
+    /** Dogrulanmis calisan referansi onbellege yaz; siradaki yukleme hizli yol. */
+    fun rememberWorkingRef(key: String, ref: AceContentRef) {
+        workingRefs[key] = System.currentTimeMillis() to ref
+    }
+
+    /** Calisan referansi onbellekten siler. */
+    fun forgetWorkingRef(key: String) {
+        workingRefs.remove(key)
+    }
+
+    /**
+     * Calisan referans onbelgesi henuz saglam mi?
+     *
+     * Saf yardimci; zaman kaynaklari disaridan verilir ve test edilebilir.
+     */
+    internal fun isWorkingRefFresh(cachedAtMs: Long, nowMs: Long): Boolean =
+        cachedAtMs > 0L && nowMs - cachedAtMs < WORKING_REF_TTL_MS
+
+    // --- Ad tespiti ---
 
     /** Motor hata nesnesinden okunabilir bir mesaj cikarir. */
     private fun errorMessage(error: JsonNode): String? {
@@ -207,15 +378,41 @@ object AceStream {
     }
 
     /**
-     * Verilen content ID'nin kanal adini motorun servis API'sinden sorar.
+     * Verilen kimligin kanal adini motorun servis API'sinden sorar.
      *
-     * Listede olmayan bir ID ile girildiginde kullanilir. Bilinemezse `null`.
+     * Listede olmayan bir ID ile girildiginde kullanilir. Cihazda olculen
+     * davranis:
+     *
+     * ```
+     * ?content_id=<content_id>  ->  calisir
+     * ?content_id=<infohash>    ->  HTTP 500
+     * ?infohash=<infohash>      ->  calisir
+     * ?infohash=<content_id>    ->  HTTP 500
+     * ```
+     *
+     * Degerin turu basta taninmasa da her iki parametre sirayla denenir;
+     * yanlisi HTTP 500 doner, dogrusu icerik adini bildirir.
      */
-    suspend fun describe(contentId: String): String? {
-        val url = "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_media_files&infohash=$contentId"
-        val body = runCatching { app.get(url).text }.getOrNull() ?: return null
-        return parseMediaName(body)
+    suspend fun describe(value: String, isInfohash: Boolean = false): String? {
+        val urls = listOf(
+            describeUrl(value, isInfohash),
+            describeUrl(value, !isInfohash),
+        ).distinct()
+        for (url in urls) {
+            val body = getBody(url, CHECK_TIMEOUT_MS) ?: continue
+            parseMediaName(body)?.let { return it }
+        }
+        return null
     }
+
+    /**
+     * `get_media_files` adresini istenen parametre adini kullanarak kurar.
+     *
+     * Saf yardimci; parametre secimi [describe] icin test edilebilir.
+     */
+    internal fun describeUrl(value: String, isInfohash: Boolean): String =
+        "$ENGINE_BASE$SERVICE_PATH?api_version=3&method=get_media_files&" +
+            (if (isInfohash) "infohash=" else "content_id=") + value
 
     /**
      * `get_media_files` yanitindan kanal adini cikarir.
@@ -238,6 +435,8 @@ object AceStream {
         }
         return null
     }
+
+    // --- Arama yanit ayristirma ---
 
     /**
      * Arama yanitini ayristirir.
@@ -267,6 +466,8 @@ object AceStream {
         return results
     }
 
+    // --- Ad eslesmesi ---
+
     /**
      * Kanal adini kucuk harf, alfanumerik kelimelere boler.
      *
@@ -276,16 +477,53 @@ object AceStream {
         value.lowercase().split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
 
     /**
-     * Iki kanal adi ayni kelimeleri iceriyor mu?
+     * Kanal adi eslesmesi.
      *
-     * "beIN SPORTS 1" ile "beIN SPORTS 1 TR" eslesmez; boylece arama sirasinda
-     * farkli bir yayin (TR / HD / FR) secilmez.
+     * Hedef adin TUM kelimeleri aday adinin kelimeleri icinde mevcutsa
+     * eslesme sayilir; adaydaki fazla kelimeler (HD, TR, 1080p gibi)
+     * eslesmeyi bozmaz ama siralamada cezalandirilir ([extraTokens]).
+     * Boylece dizindeki "beIN SPORTS HD 1 [TR]" ile "beIN Sports HD 1 TR"
+     * gibi farkliliklar da yakalanir.
+     *
+     * Eski kurallar bozulan durumlarda hala elenir:
+     * - Kanal numarasi farkliyse hedefteki numerik kelime adayda
+     *   bulunmaz, dolayisiyla eslesme olmadigi icin elenir
+     *   ("beIN SPORTS 1" hedefi "beIN SPORTS 2" adayini karistirmaz).
+     * - Dil surekleri hedefe kelime olarak girince korunur: arama hedefi
+     *   "beIN SPORTS HD 3 TR" ise aday "beIN SPORTS HD 3 FR", hedefin
+     *   "tr" kelimesini kapsamadigi icin elenir.
      */
     internal fun matchesTokens(candidateName: String, target: List<String>): Boolean {
         if (target.isEmpty()) return false
-        val candidate = tokens(candidateName)
-        return candidate == target || candidate.toSet() == target.toSet()
+        val candidate = tokens(candidateName).toSet()
+        val targetSet = target.toSet()
+        // Hedefe ait TUM kelimeler adayda mevcut olmali; fazlalar izinli.
+        return candidate.containsAll(targetSet)
     }
+
+    /**
+     * Aday adindaki hedef disi kelime sayisi.
+     *
+     * Siralamada ceza puanidir: temiz eslesme (0 fazla kelime) ayni
+     * durum grubunda once denenir.
+     */
+    internal fun extraTokens(candidateName: String, target: List<String>): Int {
+        val targetSet = target.toSet()
+        return tokens(candidateName).count { it !in targetSet }
+    }
+
+    // --- Altyapi ---
+
+    /**
+     * Kisa zaman asimli GET; hatada ya da zaman asiminda `null` doner.
+     *
+     * Onceki surumde her motor cagrisi kutuphane varsayilan (uzun) zaman
+     * asimiydi: olu port ya da yanit vermeyen motor, aday sayisi kadar
+     * uzun bekletme yaratıyordu. Ucler artik amacina gore kisalitildi:
+     * durum sondaji 3 sn, icerik dogrulama 8 sn, arama dizini 12 sn.
+     */
+    private suspend fun getBody(url: String, timeoutMs: Long): String? =
+        withTimeoutOrNull(timeoutMs) { runCatching { app.get(url).text }.getOrNull() }
 }
 
 /**

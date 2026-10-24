@@ -195,25 +195,43 @@ class TabiiProvider : MainAPI() {
     /**
      * Bir Ace Stream kanalini yukler.
      *
-     * Once kanalin bilinen content_id'leri (kullanicinin dogruladigi
-     * degerler), sonra motorun arama dizinindeki infohash'ler denenir.
-     * Motor `?content_id=` ile yalnizca content_id, `?infohash=` ile yalnizca
-     * infohash kabul ediyor; bu yuzden turun degisikligi onemlidir.
-     *
-     * Dogrulama SALT-OKUNUR bir API ile yapilir; oynatma oturumu acmaz.
+     * Akis sirasi:
+     * 1. **Hizli yol:** bu kanal icin onceden dogrulanmis calisan bir
+     *    referans onbellekte varsa yalnizca o tek salt-okunur istekle
+     *    kontrol edilir; tam arama + tarama yapilmaz.
+     * 2. **Motor hazirligi:** motor kapaliysa Ace Stream uygulamasi
+     *    bastirilir ve motorun HTTP ucu ustel bekleme ile beklenir.
+     * 3. **Aday cozumleme:** kanalin bilinen content_id'leri (kullanicinin
+     *    dogruladigi degerler), sonra motorun arama dizinindeki
+     *    infohash'ler denenir. Motor `?content_id=` ile yalnizca content_id,
+     *    `?infohash=` ile yalnizca infohash kabul ediyor; bu yuzden turun
+     *    degisikligi onemlidir.
+     * 4. **Dogrulama:** SALT-OKUNUR bir API ile yapilir (oynatma oturumu
+     *    acmaz); ilk adaylar eszamanli, kalanlari sirali denenir.
+     * 5. **Devir:** Ace Stream uygulamasi semayi isleyebiliyorsa oynatma
+     *    devredilir; devir DOGRULANMIS calisan referansin degeriyle
+     *    yapilir, URL'deki sabit kimlik yerine uygulama dogrulanmis
+     *    degerle acilir. Uygulama yoksa motorun HTTP ucu CS3'e verilir.
      */
     private suspend fun loadAceStreamChannel(contentId: String): LoadResponse {
-        // Motor kurulu degilse oynatma hatasi yerine anlasilir bir mesaj
-        // gostermek cok daha faydalari.
-        if (!AceStream.isEngineRunning()) {
-            throw ErrorLoadingException(
-                "Ace Stream motoru çalışmıyor. Cihazda Ace Stream uygulamasını açıp " +
-                    "kanalın yayında olduğundan emin olun (motor yalnızca uygulama " +
-                    "açıkken ayakta kalır)."
-            )
+        val known = AceStreamChannels.byContentId(contentId)
+        val cacheKey = known?.id ?: contentId
+
+        // 1) Hizli yol: onceki yuklemede dogrulanmis calisan ref.
+        val cachedRef = AceStream.workingRef(cacheKey)
+        if (cachedRef != null) {
+            Log.d(TAG, "$cacheKey: önbellekteki çalışan referans deneniyor")
+            if (AceStream.checkContent(cachedRef) == null) {
+                return finishAceStreamChannel(known, contentId, cachedRef)
+            }
+            // Önbelleğe yazılan referans artık çalışmiyor; tam taramaya düşülür.
+            Log.d(TAG, "$cacheKey: önbellekteki referans çalışmiyor; tam taranacak")
+            AceStream.forgetWorkingRef(cacheKey)
         }
 
-        val known = AceStreamChannels.byContentId(contentId)
+        // 2) Motor kapaliysa uygulamayi baslat ve ayaklanmasini bekle.
+        ensureAceStreamEngine(contentId)
+
         val title = known?.name
             ?: AceStream.describe(contentId)
             ?: "Ace Stream"
@@ -223,33 +241,85 @@ class TabiiProvider : MainAPI() {
             ?: listOf(AceContentRef(contentId))
         Log.d(TAG, "$title: ${refs.size} içerik referansı denenecek")
 
-        var working: AceContentRef? = null
-        var diagnostic = ""
-        for (ref in refs) {
-            val error = AceStream.checkContent(ref)
-            if (error == null) {
-                working = ref
-                diagnostic = ""
-                break
-            }
-            Log.d(TAG, "$title: ${ref.value} yüklenemedi ($error), sıradakine geçiliyor")
-            if (diagnostic.isEmpty()) diagnostic = error
-        }
-
+        val (working, diagnostic) = AceStream.workingAndError(refs)
         if (working == null) {
             throw ErrorLoadingException(
-                "$title için yayın bulunamadı. $diagnostic " +
+                "$title için yayın bulunamadı. ${diagnostic.orEmpty()} " +
                     "Ace Stream motoru P2P ağına bağlanamıyor olabilir; uygulamayı açıp " +
                     "kanalın yayında olduğundan emin olun."
             )
         }
+        AceStream.rememberWorkingRef(cacheKey, working)
+        return finishAceStreamChannel(known, contentId, working)
+    }
+
+    /**
+     * Motor kapaliysa Ace Stream uygulamasini baslatir ve motorun ayaga
+     * kalkmasini bekler.
+     *
+     * Uygulama kurulu degilse (ya da semayi isleyen bir sey bulunmuyorsa)
+     * eski anlasilir hata mesaji doner ve akis sona erer; uygulama
+     * baslatilir ama motor beklenen surede ayaklanmamissa "tekrar
+     * dokunun" mesaji
+     * verir; motor ayaklanirsa akis ayni yuklemede surer.
+     */
+    private suspend fun ensureAceStreamEngine(contentId: String) {
+        if (AceStream.isEngineRunning()) return
+
+        val context = AceStreamApp.cs3Context()
+        val uri = AceStream.acestreamUrl(contentId)
+        if (context == null || !AceStreamApp.canHandle(context, uri)) {
+            throw ErrorLoadingException(
+                "Ace Stream motoru çalışmıyor. Cihazda Ace Stream uygulamasını açıp " +
+                    "kanalın yayında olduğundan emin olun (motor yalnızca uygulama " +
+                    "açıkken ayakta kalır)."
+            )
+        }
+
+        // Once notr baslatma niyeti (uygulamayi acar, oturum acmaz); o
+        // bulunamazsa acestream:// semasi: hem motoru kaldirir hem kanali
+        // uygulamanin kendi ekraninda acar.
+        val launched = AceStreamApp.launchEngine(context) || AceStreamApp.launch(context, contentId)
+        if (!launched) {
+            Log.w(TAG, "Ace Stream uygulaması başlatılamadı")
+            throw ErrorLoadingException(
+                "Ace Stream motoru çalışmıyor ve uygulama başlatılamadı. Ace Stream " +
+                    "uygulamasını açıp kanala tekrar dokunun."
+            )
+        }
+
+        if (!AceStream.awaitEngine()) {
+            throw ErrorLoadingException(
+                "Ace Stream uygulaması açıldı; motor ${(AceStream.AWAIT_ENGINE_MS / 1000)} saniye " +
+                    "içinde hazır olmadı. Birkaç saniye bekleyip kanala tekrar dokunun."
+            )
+        }
+    }
+
+    /**
+     * Dogrulanmis calisan referansla yukleme yaniti kurar.
+     *
+     * Ace Stream uygulamasi semayi isleyebiliyorsa oynatmayi uygulamaya
+     * devir eder; devirde URL'deki sabit kimlik yerine DOGRULANMIS
+     * calisan referansin degeri kullanilir (acestream:// hem content_id
+     * hem infohash kabul eder). Boylece sabit kimlik eskimis olsa bile
+     * uygulama guncel calisan yayini acar.
+     */
+    private suspend fun finishAceStreamChannel(
+        known: AceStreamChannel?,
+        contentId: String,
+        working: AceContentRef,
+    ): LoadResponse {
+        val title = known?.name
+            ?: AceStream.describe(working.value, working.isInfohash)
+            ?: "Ace Stream"
 
         // Ace Stream uygulamasi varsa P2P oynatmayi ona birak: motorun TEK
         // oynaticisi var ve CS3 hem onizleme hem oynatma icin ayri istek
         // atinca motor iki oturuma birden acik kalamiyor (HTTP 500).
         val context = AceStreamApp.cs3Context()
         if (context != null && AceStreamApp.canHandle(context, AceStream.acestreamUrl(contentId))) {
-            if (AceStreamApp.launch(context, contentId)) {
+            if (AceStreamApp.launch(context, working.value)) {
                 return newLiveStreamLoadResponse(
                     title,
                     AceStream.acestreamUrl(contentId),
@@ -287,9 +357,17 @@ class TabiiProvider : MainAPI() {
             // her istek bir oturum acar ve motorun TEK oynaticisi adaylar
             // arasinda gezinir. Ayni anda calisan Ace Player'in yayini da
             // bu yuzden kesilir.
+            //
+            // DENEYSEL: Link M3U8 yerine VIDEO isaretlenir. CS3 bir HLS
+            // adresi gordugunde oynaticiyi acmadan once arka planda kucuk
+            // bir onizleme istegi atiyor (PreviewImgM3u8); motor ikinci
+            // manifest istegini ikinci oturum sanip HTTP 500 ile kapaniyor.
+            // VIDEO isaretlemesi onizleme yukleyicisini devreden cikarir ve
+            // manifest TEK istekte cekilir. Uygulamanin Ace Player'i kurulu
+            // olan cihazlari etkilemez (asıl yol uygulama devri).
             callback.invoke(
                 newExtractorLink(name, name, data) {
-                    type = ExtractorLinkType.M3U8
+                    type = ExtractorLinkType.VIDEO
                     quality = Qualities.Unknown.value
                 }
             )

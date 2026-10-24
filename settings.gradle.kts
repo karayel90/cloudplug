@@ -9,6 +9,12 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Not: google.com/mavenCentral'a bazi yapilar (lint araclari)
+        // ara sira 404 veriyor; yansilar (Aliyun + repo1) bu yuzden
+        // once sira tutar.
+        maven("https://maven.aliyun.com/repository/google")
+        maven("https://maven.aliyun.com/repository/central")
+        maven("https://repo1.maven.org/maven2")
         google()
         mavenCentral()
         maven("https://jitpack.io")

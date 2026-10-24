@@ -124,29 +124,40 @@ class AceStreamTest {
     }
 
     @Test
-    fun `eslesen sonuclar token eslesmesine gore secilir`() {
+    fun `eslesen sonuclar hedefi kapsayanlarin temizi once gelir`() {
+        // Hedefin TUM kelimelerini kapsayan adaylar eslesir; temiz eslesme
+        // (fazla kelimesiz) siralamada once gelir.
         val results = listOf(
             AceStreamResult("beIN SPORTS 2", "48bee10b883f17c7186d60f1e8022dca0ba41a05", 2, 1.0),
-            AceStreamResult("beIN SPORTS 1", beinSports1, 2, 1.0),
             AceStreamResult("beIN SPORTS 1 HD", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 2, 1.0),
+            AceStreamResult("beIN SPORTS 1", beinSports1, 2, 1.0),
         )
         val target = AceStream.tokens("beIN SPORTS 1")
-        val matched = results.filter { AceStream.matchesTokens(it.name, target) }
-        assertEquals(1, matched.size)
+        val matched = results
+            .filter { AceStream.matchesTokens(it.name, target) }
+            .sortedWith(AceStream.searchOrder(target))
+        assertEquals(2, matched.size)
         assertEquals(beinSports1, matched[0].contentId)
+        assertEquals("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", matched[1].contentId)
     }
 
     @Test
-    fun `yayinda olmayan sonuc dusuk puan alir`() {
+    fun `yayinda olmayan sonuc düşük sıralanır`() {
+        // "beIN SPORTS 1 TR" hedefin tum kelimelerini kapsadigi icin
+        // artik ELENMEZ; ama tribun siralamasinda yayinda olmayan (status)
+        // adayin altinda kalir.
         val results = listOf(
             AceStreamResult("beIN SPORTS 1", beinSports1, 1, 0.2),
             AceStreamResult("beIN SPORTS 1 TR", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 2, 1.0),
         )
         val target = AceStream.tokens("beIN SPORTS 1")
-        // "beIN SPORTS 1 TR" farkli bir yayin; token eslesmesiyle elenir
-        val matched = results.filter { AceStream.matchesTokens(it.name, target) }
-        assertEquals(1, matched.size)
-        assertEquals(beinSports1, matched[0].contentId)
+        val matched = results
+            .filter { AceStream.matchesTokens(it.name, target) }
+            .sortedWith(AceStream.searchOrder(target))
+        assertEquals(2, matched.size)
+        // Yayinda olan (status=2) aday once gelir; temiz eslesme ikincil kriterdir.
+        assertEquals("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", matched[0].contentId)
+        assertEquals(beinSports1, matched[1].contentId)
     }
 
     // --- Asagidaki fixture'lar mock Ace Stream motorunun (127.0.0.1:6878)
@@ -160,9 +171,17 @@ class AceStreamTest {
         assertEquals("beIN SPORTS 1", results[0].name)
         assertEquals(beinSports1, results[0].contentId)
         assertEquals(2, results[0].status)
-        // "beIN SPORTS 1 HD" token eslesmesiyle elenir
+        // "beIN SPORTS 1 HD" fazla kelime olarak kabul edilir; siralamada
+        // temiz eslesmenin (beIN SPORTS 1) altinda kalir.
         val target = AceStream.tokens("beIN SPORTS 1")
-        assertEquals(1, results.count { AceStream.matchesTokens(it.name, target) })
+        val ordered = results
+            .filter { AceStream.matchesTokens(it.name, target) }
+            .sortedWith(AceStream.searchOrder(target))
+            .map { it.contentId }
+        assertEquals(
+            listOf(beinSports1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            ordered,
+        )
     }
 
     @Test
@@ -221,29 +240,37 @@ class AceStreamTest {
     }
 
     @Test
-    fun `onek eslesmesi artik kabul edilmiyor`() {
-        // Onceki davranis: duzleştirilmis string karsilastirmasinda onek
-        // eslesmesi 400 puan aliyordu; "beIN SPORTS 1 TR" yanlis kanal
-        // olarak secilebiliyordu.
-        val results = listOf(
-            AceStreamResult("beIN SPORTS 1 HD", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", 2, 1.0),
-        )
+    fun `fazla kelimeler kabul edilir ama cezalandirilir`() {
+        // Eski davranista tam token esitligi isteniyordu; dizindeki
+        // "beIN SPORTS HD 1 [TR]" gibi turetilmis adlar yuklenemiyordu.
+        // Artik hedefin TUM kelimeleri adayda mevcutsa eslesme sayilir,
+        // fazla kelimeler siralamada ceza alir.
         val target = AceStream.tokens("beIN SPORTS 1")
-        assertTrue(results.none { AceStream.matchesTokens(it.name, target) })
+        assertTrue(AceStream.matchesTokens("beIN SPORTS 1 HD", target))
+        assertEquals(1, AceStream.extraTokens("beIN SPORTS 1 HD", target))
+        assertEquals(0, AceStream.extraTokens("beIN SPORTS 1", target))
     }
 
     @Test
     fun `token eslesmesi farkli yayinlari karistirmaz`() {
-        // "beIN SPORTS 1" ile "beIN SPORTS 1 TR" FARKLI yayinlardir.
-        val target = AceStream.tokens("beIN SPORTS 1")
-        assertFalse(AceStream.matchesTokens("beIN SPORTS 1 TR", target))
-        assertFalse(AceStream.matchesTokens("beIN SPORTS 1 HD", target))
-        assertFalse(AceStream.matchesTokens("BEIN SPORTS 1 FR", target))
-        assertFalse(AceStream.matchesTokens("beIN SPORTS 2", target))
+        // Hedefin TUM kelimeleri adayda mevcut olmali; bu yuzden:
+        // - kanal numarasi farkli olan aday elenir (hedefteki "1" yok),
+        // - hedefte dil kelimesi varsa onu kapsamayan aday elenir.
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 2", AceStream.tokens("beIN SPORTS 1")))
 
-        assertTrue(AceStream.matchesTokens("beIN SPORTS 1", target))
-        assertTrue(AceStream.matchesTokens("Bein Sports 1", target))
-        assertTrue(AceStream.matchesTokens("bein sports 1", target))
+        val trTarget = AceStream.tokens("beIN SPORTS 1 TR")
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 1", trTarget))       // TR eksik
+        assertFalse(AceStream.matchesTokens("BEIN SPORTS 1 FR", trTarget))     // TR yerine FR
+        assertFalse(AceStream.matchesTokens("beIN SPORTS 2 TR", trTarget))     // kanal no farkli
+
+        assertTrue(AceStream.matchesTokens("beIN SPORTS 1 TR", trTarget))      // temiz eslesme
+        assertTrue(AceStream.matchesTokens("beIN SPORTS 1 TR HD", trTarget))   // fazla kelime kabul
+        assertTrue(AceStream.matchesTokens("beIN SPORTS HD 1 TR", trTarget))   // kelime sirasi farkli
+
+        val bareTarget = AceStream.tokens("beIN SPORTS 1")
+        assertTrue(AceStream.matchesTokens("beIN SPORTS 1", bareTarget))
+        assertTrue(AceStream.matchesTokens("Bein Sports 1", bareTarget))
+        assertTrue(AceStream.matchesTokens("bein sports 1", bareTarget))
     }
 
     @Test
@@ -263,7 +290,8 @@ class AceStreamTest {
     @Test
     fun `arama sonuclarinin tamami kullanilabilirlige gore siralanir`() {
         // Ayni kanalin birden fazla yayinci node'u olabiliyor; en kullanilabilir
-        // olan once denenmeli.
+        // olan once denenmeli. Siralama kurallari [AceStream.searchOrder]
+        // icerisinde toplandi: status -> fazla kelime cezasi -> availability.
         val results = listOf(
             AceStreamResult("beIN SPORTS 1", "1111111111111111111111111111111111111111", 1, 0.2),
             AceStreamResult("beIN SPORTS 1", "2222222222222222222222222222222222222222", 2, 0.9),
@@ -272,10 +300,7 @@ class AceStreamTest {
         val target = AceStream.tokens("beIN SPORTS 1")
         val ordered = results
             .filter { AceStream.matchesTokens(it.name, target) }
-            .sortedByDescending {
-                (if (it.status == AceStream.STATUS_AVAILABLE) 10_000 else 0) +
-                    (it.availability * 1000).toInt()
-            }
+            .sortedWith(AceStream.searchOrder(target))
             .map { it.contentId }
         assertEquals(
             listOf(
@@ -285,5 +310,63 @@ class AceStreamTest {
             ),
             ordered,
         )
+    }
+
+    // --- v26 yeni davranislari: saf yardimcilar ---
+
+    @Test
+    fun `describe adresleri parametre turune gore kullanilir`() {
+        // Cihazda olculdu: yanlis parametre HTTP 500 doner; bu yuzden
+        // degerin turu neyse o parametre basta denenir, diger parametre
+        // yedek olarak denemeye girer.
+        val contentUrl = AceStream.describeUrl(beinSports1, isInfohash = false)
+        assertTrue(contentUrl.contains("content_id=$beinSports1"))
+        assertFalse(contentUrl.contains("infohash="))
+
+        val hashUrl = AceStream.describeUrl(beinSports1, isInfohash = true)
+        assertTrue(hashUrl.contains("infohash=$beinSports1"))
+        assertFalse(hashUrl.contains("content_id="))
+    }
+
+    @Test
+    fun `motor durum onbellegi sureye gore yasar`() {
+        // Onbellek yok (0 damgasi) -> taze degil.
+        assertFalse(AceStream.isEngineStateFresh(0L, 1_000L))
+        // Damga guncel -> taze.
+        assertTrue(AceStream.isEngineStateFresh(10_000L, 15_000L))
+        // Damga eski -> taze degil.
+        assertFalse(AceStream.isEngineStateFresh(10_000L, 30_000L))
+    }
+
+    @Test
+    fun `calisan ref onbellegi sureye gore yasar`() {
+        // Onbellek yok (0 damgasi) -> taze degil.
+        assertFalse(AceStream.isWorkingRefFresh(0L, 1_000L))
+        // Damga guncel -> taze.
+        assertTrue(AceStream.isWorkingRefFresh(1_000_000L, 1_100_000L))
+        // Damga eski -> taze degil. 15 dk = 900_000 tanesinde.
+        assertFalse(AceStream.isWorkingRefFresh(1_000_000L, 1_000_000L + AceStream.WORKING_REF_TTL_MS))
+    }
+
+    @Test
+    fun `calisan ref onbellegine yazilir ve okunur`() {
+        val key = "test-kanal"
+        AceStream.forgetWorkingRef(key)
+        assertNull(AceStream.workingRef(key))
+
+        AceStream.rememberWorkingRef(key, AceContentRef(beinSports1))
+        assertEquals(AceContentRef(beinSports1), AceStream.workingRef(key))
+
+        AceStream.forgetWorkingRef(key)
+        assertNull(AceStream.workingRef(key))
+    }
+
+    @Test
+    fun `ustel bekleme adimi tavana kadar buyur`() {
+        assertEquals(1_000L, AceStream.nextBackoff(500L, 3_000L))
+        assertEquals(2_000L, AceStream.nextBackoff(1_000L, 3_000L))
+        // Tavan: 4 sn yerine 3 sn.
+        assertEquals(3_000L, AceStream.nextBackoff(2_000L, 3_000L))
+        assertEquals(3_000L, AceStream.nextBackoff(3_000L, 3_000L))
     }
 }
