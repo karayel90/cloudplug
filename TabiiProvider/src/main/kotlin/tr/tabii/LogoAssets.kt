@@ -205,4 +205,7 @@ internal object LogoAssets {
     /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
     fun acePosterFor(id: String, fallback: String?): String? =
         if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
+
+    /** "Tüm Kanallar" (kanal değiştirme) kartının görseli. */
+    fun zappingPoster(): String = BASE + "zapping.png"
 }
