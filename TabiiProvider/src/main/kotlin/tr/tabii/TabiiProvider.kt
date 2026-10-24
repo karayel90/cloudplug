@@ -141,13 +141,13 @@ class TabiiProvider : MainAPI() {
             Triple("Beinsports-3-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8", "https://i.ibb.co/GkX99sd/Bein3.png"),
             Triple("Beinsports-4-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs4.m3u8", "https://i.ibb.co/3fPVPLL/Bein1.png"),
             Triple("Beinsports-5-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs5.m3u8", "https://i.ibb.co/9VMNBsJ/Bein2.png"),
-            Triple("S Sport", "https://andro.evrenesoglu213.click/checklist/androstreamlivess1.m3u8", "https://i.ibb.co/3fPVPLL/Bein1.png"),
-            Triple("S Sport 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivess2.m3u8", "https://i.ibb.co/9VMNBsJ/Bein2.png"),
-            Triple("S Sport Plus", "https://andro.evrenesoglu213.click/checklist/androstreamlivessplus1.m3u8", "https://i.ibb.co/GkX99sd/Bein3.png"),
-            Triple("Tivibu Spor 1", "https://andro.evrenesoglu213.click/checklist/androstreamlivets1.m3u8", "https://i.ibb.co/3fPVPLL/Bein1.png"),
-            Triple("Tivibu Spor 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivets2.m3u8", "https://i.ibb.co/9VMNBsJ/Bein2.png"),
-            Triple("Tivibu Spor 3", "https://andro.evrenesoglu213.click/checklist/androstreamlivets3.m3u8", "https://i.ibb.co/GkX99sd/Bein3.png"),
-            Triple("Tivibu Spor 4", "https://andro.evrenesoglu213.click/checklist/androstreamlivets4.m3u8", "https://i.ibb.co/3fPVPLL/Bein1.png"),
+            Triple("S Sport", "https://andro.evrenesoglu213.click/checklist/androstreamlivess1.m3u8", "https://images.seeklogo.com/logo-png/45/1/s-sport-logo-png_seeklogo-451885.png"),
+            Triple("S Sport 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivess2.m3u8", "https://images.seeklogo.com/logo-png/45/1/s-sport-logo-png_seeklogo-451885.png"),
+            Triple("S Sport Plus", "https://andro.evrenesoglu213.click/checklist/androstreamlivessplus1.m3u8", "https://upload.wikimedia.org/wikipedia/commons/2/2d/S_Sport_Plus_Logo.png"),
+            Triple("Tivibu Spor 1", "https://andro.evrenesoglu213.click/checklist/androstreamlivets1.m3u8", "https://cdn.cleanpng.com/logo-images/02/03/c7fedcf3a9eb098ee7e9a9ef1f9e2c2e4ac2d7b.png"),
+            Triple("Tivibu Spor 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivets2.m3u8", "https://cdn.cleanpng.com/logo-images/02/03/c7fedcf3a9eb098ee7e9a9ef1f9e2c2e4ac2d7b.png"),
+            Triple("Tivibu Spor 3", "https://andro.evrenesoglu213.click/checklist/androstreamlivets3.m3u8", "https://cdn.cleanpng.com/logo-images/02/03/c7fedcf3a9eb098ee7e9a9ef1f9e2c2e4ac2d7b.png"),
+            Triple("Tivibu Spor 4", "https://andro.evrenesoglu213.click/checklist/androstreamlivets4.m3u8", "https://cdn.cleanpng.com/logo-images/02/03/c7fedcf3a9eb098ee7e9a9ef1f9e2c2e4ac2d7b.png"),
         )
         val aceResults = AceStreamChannels.ALL.map { it.toSearchResult() } + aceDirect.map { (t, u, l) ->
             newLiveSearchResponse(t, u, TvType.Live) {
