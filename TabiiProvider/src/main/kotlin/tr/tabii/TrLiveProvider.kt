@@ -51,8 +51,12 @@ class TrLiveProvider : MainAPI() {
          * verme alanı yok. Bu yüzden kanallar bir "dizi"nin bölümleri gibi
          * sunulur: oynatıcıdaki Bölümler çekmecesi kanal listesi olarak
          * çalışır ve seçilen kanal anında açılır.
+         *
+         * Adres mutlaka mutlak bir `https` URL'si olmalı: uygulama özel
+         * şemaları (`zapping://...`) `mainUrl` ile birleştirip bozuyor.
+         * Bu adres hiç indirilmez; yalnızca kimlik olarak kullanılır.
          */
-        const val ZAPPING_URL = "zapping://tr-canli"
+        const val ZAPPING_URL = "https://raw.githubusercontent.com/karayel90/cloudplug/main/zapping"
         const val ZAPPING_TITLE = "Tüm Kanallar"
         const val ZAPPING_SECTION = "Kanal Değiştir"
     }
@@ -86,7 +90,6 @@ class TrLiveProvider : MainAPI() {
             ZAPPING_TITLE,
             ZAPPING_URL,
             TvType.Live,
-            fix = false,
         ) {
             posterUrl = LogoAssets.zappingPoster()
         }
@@ -104,7 +107,11 @@ class TrLiveProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse {
         // Kanal değiştirme kartı: kanallar bölüm olarak listelenir.
-        if (url == ZAPPING_URL) return zappingPage()
+        // Uygulama adresi `fixUrl` ile normalleştirebildiği için (sondaki `/`
+        // gibi) tam eşitlik yerine esnek bir eşleşme kullanılır.
+        if (url == ZAPPING_URL || url.trimEnd('/').endsWith("/zapping")) {
+            return zappingPage()
+        }
 
         // Arama sonuçlarında adres olarak doğrudan yayın manifest'i kullanılır;
         // load()'a aynı adres gelir.
