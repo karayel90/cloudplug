@@ -58,7 +58,7 @@ internal object ExtraChannels {
             url = "https://beyaztv-live.daioncdn.net/beyaztv/beyaztv_1080p.m3u8",
         ),
         M3u.Entry(
-            title = "TV2 (1080p)",
+            title = "TV2",
             tvgId = "TV2.tr",
             logo = "https://www.tv2.com.tr/assets/img/tv2-logo.svg?v=1",
             group = "General",

@@ -69,56 +69,50 @@ object TrLiveChannels {
     )
 
     /**
-     * Kanalların ana sayfadaki sırası — yaklaşık izlenme (reyting) sırası.
+     * Kanalların ana sayfadaki sırası — editoryal yayın sırası.
      *
      * Canlı reyting verisi sağlayan ücretsiz bir API olmadığı için sıralama
-     * editoryaldir: ulusal yayıncıların prime-time izlenme payları ve haber
-     * kanallarının gün içi erişimi gözetilerek en çok izlenenden en aza doğru
-     * dizilmiştir. Liste tek yerden yönetilir; bir kanalı öne almak için
-     * düzleştirilmiş adını (`M3u.normalizeName`) buraya taşımak yeterlidir.
+     * editoryaldir: ulusal yayıncıların prime-time izlenme payları, haber
+     * kanallarının gün içi erişimi, spor/çocuk kuşakları ve yerel kanalların
+     * yayın gücü gözetilerek en çok izlenenden en aza doğru dizilmiştir.
+     * Liste tek yerden yönetilir; bir kanalın yerini değiştirmek için
+     * düzleştirilmiş adını (`M3u.normalizeName`) satırlar arasında taşımak
+     * yeterlidir.
      *
-     * Burada olmayan kanallar sıralamanın sonuna, M3U listesindeki kendi
-     * sıralarıyla (alfabetik) eklenir.
+     * Liste katalogdaki tüm kanalları kapsar. İleride M3U'ya yeni bir kanal
+     * eklenirse burada olmadığı için sıralamanın sonuna, M3U listesindeki
+     * kendi sırasıyla düşer; öne almak için buraya eklenir.
      */
     private val POPULARITY: List<String> = listOf(
-        // Ulusal genel içerik yayıncıları
-        "atv", "nowtv", "kanald", "startv", "tv8", "trt1", "showtv",
-        // Haber
-        "trthaber", "haberturktv", "cnnturk", "ntv", "ahaber", "halktv", "tv100",
-        "tele1", "24tv", "haberglobal", "flashhabertv", "ulketv", "akittv",
-        "tvnet", "tytturk", "bloomberght",
-        // Spor
-        "trtspor", "ssport", "ssport2", "beinsportshaber", "aspor", "fbtv",
-        "sportstv",
-        // Genel / eğlence
-        "teve2", "kanal7", "beyaztv", "360tv", "tv24", "kanal7avrupa",
+        // Genel, eğlence ve sinema
+        "trt1", "atv", "nowtv", "kanald", "startv", "tv8", "showtv", "360tv",
+        "kanal7", "beyaztv", "dmax", "tlc", "cnbce", "tv2", "fx",
+        // Haber, belgesel ve spor
+        "a2tv", "ntv", "trtbelgesel", "trthaber", "haberturktv", "ahaber", "bloomberght", "halktv",
+        "tele1", "haberglobal", "flashhabertv", "tgrthaber", "trtspor", "aspor", "tv24", "kanal7avrupa",
         // Çocuk
-        "trtcocuk", "minikacocuk", "minikago", "trtdiyanetcocuk",
-        "trtebailkokul", "trtebaortaokul", "trtebalise",
-        // Belgesel
-        "trtbelgesel", "dmax", "tlc", "nationalgeographic", "nationalgeographicwild",
+        "trtcocuk", "minikacocuk", "minikago",
         // Müzik
-        "trtmuzik", "powerturk", "powerturktv", "kralpoptv", "number1tv",
-        // Kamu / uluslararası
-        "trt2", "trt3", "trtturk", "trtavaz", "trtarabi", "trtkurd",
-        "trtworld", "trtworldhd",
+        "powerturk", "powerturktv", "powertv", "number1tv", "powerdance", "powerlove", "number1damar", "number1ask",
+        "number1dance", "powerturktaptaze", "powerturkakustik", "powerturkslow", "trtmuzik",
+        // TRT ve uluslararası
+        "trtdiyanetcocuk", "disneyjr", "trtebaortaokul", "trtturk", "trtavaz", "trtarabi", "trtkurd", "trtworldhd",
+        "trtworld",
+        // Yerel ve tematik
+        "4utv", "almahriahtv", "aksutv", "anadolunettv", "alzahratvturkic", "arastv", "alanyapostatv",
+        "atvalanya", "benguturktv", "brtv", "bursaastv", "cine1", "denizpostasitv", "ciftcitv", "dha",
+        "diyartv", "dosttv", "ertv", "elsharqtv", "estv", "etvkayseri", "diyanettv", "edessatv",
+        "dreamturk", "eurod", "fortunatv", "erzurumwebtv", "grandcinema", "finansturktv", "ilketv", "haber61tv",
+        "hunattv", "htsportv", "kanal23", "kanal15", "kanal12", "kanal26", "kanal58", "kanalfirat",
+        "kanalv", "kaytv", "kanalddrama", "konyaolaytv", "kanal3", "kentturktv", "lalegultv", "lifetv",
+        "medmuzik", "mekameleentv", "mavikaradeniz", "meltemtv", "mercantv", "luystv", "satranctv", "sercemtv",
+        "sunrtv", "tempotv", "semerkandtv", "tivi6", "tbmmtv", "tontv", "tjktv", "tjktv2",
+        "tr24tv", "trtsporyildiz", "tv4", "tv41", "tvden", "urfanatiktv", "tv264", "van65tv",
+        "vavtv", "zaroktv",
     )
 
     /** Çözünürlük belirten sonekler; popülerlik eşleşmesinde tolere edilir. */
     private val QUALITY_SUFFIXES = setOf("4k", "8k", "hd", "fhd", "uhd", "sd")
-
-    /**
-     * Popülerlik listesinin dışında kalan bir kanalı, seçilen bir komşusunun
-     * hemen ardına sabitler (kanal → çapa kanal).
-     *
-     * [POPULARITY] yalnızca "öne al" sırası verir; listede olmayan kanallar
-     * M3U sırasını korur ve yeni eklenen kanallar listenin sonuna düşer.
-     * TV2 gibi bir kanalı listede rastgele bir komşusunun (ör. CNBC-e) arkasına
-     * yerleştirmek için bu harita kullanılır.
-     */
-    private val INSERT_AFTER: Map<String, String> = mapOf(
-        "tv2" to "cnbce",
-    )
 
     private var cached: List<M3u.Entry> = emptyList()
     private var cachedAt: Long = 0L
@@ -148,26 +142,8 @@ object TrLiveChannels {
         return POPULARITY.size
     }
 
-    /**
-     * [INSERT_AFTER] ile eşlenen kanalları çapa kanalın hemen ardına taşır.
-     *
-     * Çapa ya da taşınacak kanal listede yoksa (ör. çapa bir gün M3U'dan
-     * düşerse) sıralama olduğu gibi bırakılır; bu yüzden işlem sessizce
-     * atlanır, hata verilmez.
-     */
-    fun placeAfter(entries: List<M3u.Entry>): List<M3u.Entry> {
-        val result = entries.toMutableList()
-        INSERT_AFTER.forEach { (key, anchor) ->
-            val from = result.indexOfFirst { M3u.normalizeName(it.title) == key }
-            val anchorAt = result.indexOfFirst { M3u.normalizeName(it.title) == anchor }
-            if (from < 0 || anchorAt < 0 || from == anchorAt + 1) return@forEach
-            val entry = result.removeAt(from)
-            // Çıkarılan kanal çapadan önceyse çapanın indeksi bir azaldı.
-            val anchorNow = if (from < anchorAt) anchorAt - 1 else anchorAt
-            result.add(anchorNow + 1, entry)
-        }
-        return result
-    }
+    /** Testler için: editoryal sıranın düzleştirilmiş anahtarları. */
+    internal val rankedKeys: List<String> get() = POPULARITY
 
     /**
      * Ölü adresleri ayıklar ([DeadStreams]).
@@ -204,7 +180,7 @@ object TrLiveChannels {
 
         val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return cached
         val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
-        val entries = placeAfter(sortByPopularity(M3u.dedupeByBestResolution(parsed)))
+        val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
         if (entries.isNotEmpty()) {
             cached = entries
             cachedAt = now

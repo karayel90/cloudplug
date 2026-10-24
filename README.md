@@ -104,9 +104,8 @@ eklenti güncellemesi gerekmez.
   varsa çalışan daha düşük çözünürlüklü kaydı kullanılır.
 - Topluluk listesinde hiç bulunmayan **Show TV, Beyaz TV, TV2, DMAX ve TLC**,
   yayıncıların kendi sitelerindeki resmi HLS adresleriyle `ExtraChannels`
-  üzerinden eklenir. TV2, listede çapa olarak kullanılan CNBC-e'nin hemen
-  ardına yerleşir (`INSERT_AFTER`). NTV listede zaten çalışan bir kayıtla
-  mevcuttur.
+  üzerinden eklenir. TV2, editoryal sıralamada CNBC-e'nin hemen ardında yer
+  alır. NTV listede zaten çalışan bir kayıtla mevcuttur.
 
 ### Ace Stream kanalları
 

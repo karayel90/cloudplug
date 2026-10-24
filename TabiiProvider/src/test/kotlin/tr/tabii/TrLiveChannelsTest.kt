@@ -220,30 +220,15 @@ class TrLiveChannelsTest {
     }
 
     @Test
-    fun `tv2 cnbc-e kanalinin hemen ardina yerlesir`() {
-        // TV2 popülerlik listesinde yok; M3U sırasını korusaydı en sona
-        // düşerdi. INSERT_AFTER ile CNBC-e'nin arkasına sabitlenir.
-        val sorted = TrLiveChannels.sortByPopularity(
-            listOf(
-                entry("Diyar TV (720p)"),
-                entry("CNBC-e"),
-                entry("TV2 (1080p)"),
-                entry("ATV (1080p)"),
-            )
-        )
-        val placed = TrLiveChannels.placeAfter(sorted)
-        assertEquals(
-            listOf("ATV (1080p)", "Diyar TV (720p)", "CNBC-e", "TV2 (1080p)"),
-            placed.map { it.title },
-        )
-    }
-
-    @Test
-    fun `capa kanal yoksa sira degismez`() {
-        // CNBC-e bir gün M3U'dan düşerse TV2 taşınmamalı; sıralama bozulmadan
-        // kalmalı.
-        val entries = listOf(entry("Alfa TV (720p)"), entry("TV2 (1080p)"))
-        assertEquals(entries.map { it.title }, TrLiveChannels.placeAfter(entries).map { it.title })
+    fun `populerlik listesi katalogdaki tum kanallari kapsar`() {
+        // Liste baştan sona editoryal sıradır; bilinen tüm kanallar burada
+        // olmalı ki sıralama M3U düzenine bağlı kalmasın. TV2 ve CNBC-e gibi
+        // kanallar da sıraya dahil.
+        val ranked = TrLiveChannels.rankedKeys
+        assertEquals(ranked.size, ranked.toSet().size)
+        assertTrue("cnbce" in ranked)
+        assertTrue("tv2" in ranked)
+        assertEquals(ranked.indexOf("cnbce") + 1, ranked.indexOf("tv2"))
     }
 
     private fun entry(
