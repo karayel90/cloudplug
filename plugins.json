@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.google.com/s2/favicons?domain=tabii.com&sz=%size%",
-        "fileHash": "sha256-0db146cf4167e85a34404fa0c3e2a1a475a85265ba1ac0c16d7b5c386ea98441",
+        "fileHash": "sha256-4803a6cd65638ed3305e0b10cf6ed78d9ff031d87176f7b872c3ce9da59e5ca1",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/karayel90/cloudplug",
-        "fileSize": 68311,
+        "fileSize": 68244,
         "status": 1,
         "language": "tr",
         "authors": [
