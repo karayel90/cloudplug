@@ -189,6 +189,15 @@ internal object LogoAssets {
         "bein-sports-hd-1-tr",
         "bein-sports-hd-2-tr",
         "bein-sports-hd-3-tr",
+        "beinsports-4-server",
+        "beinsports-5-server",
+        "s-sport",
+        "s-sport-2",
+        "s-sport-plus",
+        "tivibu-spor-1",
+        "tivibu-spor-2",
+        "tivibu-spor-3",
+        "tivibu-spor-4",
     )
 
     /**
