@@ -1,6 +1,6 @@
 🇹🇷 Cloudstream Eklentileri (Türkçe İçerik)
 
-📖 Bu ne?
+📖 Bu nedir?
 
 Cloudstream 3 için Türkçe içerik sağlayan eklenti deposu
 
