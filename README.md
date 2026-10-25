@@ -15,4 +15,7 @@ https://raw.githubusercontent.com/karayel90/cloudplug/refs/heads/main/repo.json
 
 📄 Lisans
 
+<img width="127" height="51" alt="20130419050243!Gplv3-127x51" src="https://github.com/user-attachments/assets/c46d411e-1d89-424e-926d-a9529e7d0263" />
+
+
 GNU GPL v3 veya üzeri.
