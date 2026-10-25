@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.tabii.AceStreamTest" tests="30" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:10:25.242Z" hostname="KARAYELPC" time="0.028">
+  <properties/>
+  <testcase name="motorun gercek search yaniti ayristirilir" classname="tr.tabii.AceStreamTest" time="0.008"/>
+  <testcase name="arama sonuclarinin tamami kullanilabilirlige gore siralanir" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="acestream olmayan adreslerden content id cikarilmaz" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="yayinda olmayan sonuc düşük sıralanır" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="manifest adresi content id iceriyor" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="gecersiz content id iceren arama sonucu atilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="calisan ref onbellegi sureye gore yasar" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="acestream adresi dogru kurulur" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="motor durum onbellegi sureye gore yasar" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="fazla kelimeler kabul edilir ama cezalandirilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="ilgisiz arama sonucu secilmez" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="token sirasi degisse de eslesir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="token listesi dogru ayristirilir" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="content_id ve infohash farkli parametre kullanir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="acestream adresinden content id cikarilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="gecersiz content id reddedilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="arama sonuclari ayristirilir" classname="tr.tabii.AceStreamTest" time="0.007"/>
+  <testcase name="bozuk arama yaniti bos liste doner" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="eslesen sonuclar hedefi kapsayanlarin temizi once gelir" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="tabii adresleri content id olarak algilanmaz" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="cs3 un ekledigi mainUrl onekli adres de taninir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="describe adresleri parametre turune gore kullanilir" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="bozuk servis yanitinda kanal adi bulunamaz" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="calisan ref onbellegine yazilir ve okunur" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="json null degerleri metin olarak yorumlanmaz" classname="tr.tabii.AceStreamTest" time="0.001"/>
+  <testcase name="dosya adindan kanal adi cikarilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="gecerli content id kabul edilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="token eslesmesi farkli yayinlari karistirmaz" classname="tr.tabii.AceStreamTest" time="0.002"/>
+  <testcase name="motorun gercek get_media_files yaniti ayristirilir" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <testcase name="ustel bekleme adimi tavana kadar buyur" classname="tr.tabii.AceStreamTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

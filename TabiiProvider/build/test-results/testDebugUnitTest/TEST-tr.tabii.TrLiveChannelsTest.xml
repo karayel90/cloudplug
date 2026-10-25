@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.tabii.TrLiveChannelsTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:10:25.313Z" hostname="KARAYELPC" time="0.033">
+  <properties/>
+  <testcase name="listedeki referer harita degerinden oncelidir" classname="tr.tabii.TrLiveChannelsTest" time="0.024"/>
+  <testcase name="ek kanal daha yuksek cozunurlukle m3u kaydini ezer" classname="tr.tabii.TrLiveChannelsTest" time="0.002"/>
+  <testcase name="cozunurluk sonekli baslik populer kanal sayilir" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="populerlik listesi katalogdaki tum kanallari kapsar" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="populer kanallar one siralanir" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="daion olmayan kanal referer istemez" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="liste adresi topluluk m3u kaynakli olmali" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="daion kanallari kendi sitelerini referer olarak alir" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="bilinmeyen kanallar kendi arasinda sirasini korur" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="olu adresler kataloga girmez" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="ek kanallarin refereri korunur" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="bilinmeyen daion kanali referer istemez" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="liste disi kanallar kataloga eklenir" classname="tr.tabii.TrLiveChannelsTest" time="0.001"/>
+  <testcase name="bos refererli kayit daion haritasina duser" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="kara liste bilinmeyen adresi etkilemez" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="olu en iyi kayit yerine calisan kayit kullanilir" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <testcase name="yerel atv kanali atv ile eslesmez" classname="tr.tabii.TrLiveChannelsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

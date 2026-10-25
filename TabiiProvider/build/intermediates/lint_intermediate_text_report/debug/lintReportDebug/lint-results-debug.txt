@@ -1,0 +1,70 @@
+C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\kotlin\tr\tabii\AceStreamApp.kt:79: Warning: Consider adding a <queries> declaration to your manifest when calling this method; see https://g.co/dev/packagevisibility for details [QueryPermissionsNeeded]
+        val list = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                      ~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "QueryPermissionsNeeded":
+   Apps that target Android 11 cannot query or interact with other installed
+   apps by default. If you need to query or interact with other installed
+   apps, you may need to add a <queries> declaration in your manifest.
+
+   As a corollary, the methods PackageManager#getInstalledPackages and
+   PackageManager#getInstalledApplications will no longer return information
+   about all installed apps. To query specific apps or types of apps, you can
+   use methods like PackageManager#getPackageInfo or
+   PackageManager#queryIntentActivities.
+
+   https://g.co/dev/packagevisibility
+
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:2: Warning: A newer version of com.android.application than 8.13.2 is available: 9.4.1 [AndroidGradlePluginVersion]
+android-gradle-plugin = "8.13.2"
+                        ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:2: Warning: A newer version of com.android.library than 8.13.2 is available: 9.4.1 [AndroidGradlePluginVersion]
+android-gradle-plugin = "8.13.2"
+                        ~~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:12: Warning: A newer version of com.github.Blatzar:NiceHttp than 0.4.11 is available: 0.4.18 [GradleDependency]
+nicehttp = "0.4.11"
+           ~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:6: Warning: A newer version of com.google.code.gson:gson than 2.13.2 is available: 2.15.0 [NewerVersionAvailable]
+gson = "2.13.2"
+       ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:9: Warning: A newer version of com.fasterxml.jackson.module:jackson-module-kotlin than 2.13.1 is available: 2.22.4 [NewerVersionAvailable]
+jackson = "2.13.1"
+          ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:10: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-core than 1.10.2 is available: 1.11.0 [NewerVersionAvailable]
+kotlinx-coroutines-core = "1.10.2"
+                          ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:11: Warning: A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.10.2 is available: 1.11.0 [NewerVersionAvailable]
+kotlinx-coroutines-test = "1.10.2"
+                          ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:13: Warning: A newer version of org.jsoup:jsoup than 1.22.1 is available: 1.23.2 [NewerVersionAvailable]
+jsoup = "1.22.1"
+        ~~~~~~~~
+C:\Users\KARAYEL\Desktop\CloudPlug\gradle\libs.versions.toml:14: Warning: A newer version of org.jetbrains.kotlin.android than 2.3.0 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.3.0"
+         ~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+0 errors, 10 warnings

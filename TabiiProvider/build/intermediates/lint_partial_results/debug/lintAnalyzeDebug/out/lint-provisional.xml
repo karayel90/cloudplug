@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.2" type="conditional_incidents">
+
+    <incident
+        id="QueryPermissionsNeeded"
+        severity="warning"
+        message="Consider adding a `&lt;queries>` declaration to your manifest when calling this method; see https://g.co/dev/packagevisibility for details">
+        <location
+            file="${:TabiiProvider*debug*MAIN*sourceProvider*0*javaDir*3}/tr/tabii/AceStreamApp.kt"
+            line="79"
+            column="23"
+            startOffset="2670"
+            endLine="79"
+            endColumn="44"
+            endOffset="2691"/>
+        <map>
+            <entry
+                name="queryAll"
+                boolean="false"/>
+        </map>
+    </incident>
+
+</incidents>

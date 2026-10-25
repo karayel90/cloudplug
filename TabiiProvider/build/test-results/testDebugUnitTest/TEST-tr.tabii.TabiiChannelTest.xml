@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.tabii.TabiiChannelTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:10:25.286Z" hostname="KARAYELPC" time="0.023">
+  <properties/>
+  <testcase name="readsChannelsFromNextData" classname="tr.tabii.TabiiChannelTest" time="0.004"/>
+  <testcase name="taban adres bilinmiyorsa logo null" classname="tr.tabii.TabiiChannelTest" time="0.001"/>
+  <testcase name="skipsDrmMedia" classname="tr.tabii.TabiiChannelTest" time="0.0"/>
+  <testcase name="prefersParamlessClearHls" classname="tr.tabii.TabiiChannelTest" time="0.0"/>
+  <testcase name="logo taban adresiyle mutlak adrese donusur" classname="tr.tabii.TabiiChannelTest" time="0.001"/>
+  <testcase name="returnsNullWhenNothingPlayable" classname="tr.tabii.TabiiChannelTest" time="0.001"/>
+  <testcase name="parsesChannel" classname="tr.tabii.TabiiChannelTest" time="0.014"/>
+  <testcase name="returnsNullForIncompleteChannel" classname="tr.tabii.TabiiChannelTest" time="0.001"/>
+  <testcase name="taban adres sondaki boslukla da calisir" classname="tr.tabii.TabiiChannelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

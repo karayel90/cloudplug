@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.2" type="incidents">
+
+    <incident
+        id="AndroidGradlePluginVersion"
+        severity="warning"
+        message="A newer version of com.android.application than 8.13.2 is available: 9.4.1">
+        <fix-replace
+            description="Replace with 9.4.1"
+            family="Update versions"
+            oldString="8.13.2"
+            replacement="9.4.1"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="2"
+            column="25"
+            startOffset="36"
+            endLine="2"
+            endColumn="33"
+            endOffset="44"/>
+        <map>
+            <entry
+                name="coordinate"
+                string="com.android.application"/>
+            <entry
+                name="revision"
+                string="9.4.1"/>
+        </map>
+    </incident>
+
+    <incident
+        id="AndroidGradlePluginVersion"
+        severity="warning"
+        message="A newer version of com.android.library than 8.13.2 is available: 9.4.1">
+        <fix-replace
+            description="Replace with 9.4.1"
+            family="Update versions"
+            oldString="8.13.2"
+            replacement="9.4.1"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="2"
+            column="25"
+            startOffset="36"
+            endLine="2"
+            endColumn="33"
+            endOffset="44"/>
+        <map>
+            <entry
+                name="coordinate"
+                string="com.android.application"/>
+            <entry
+                name="revision"
+                string="9.4.1"/>
+        </map>
+    </incident>
+
+    <incident
+        id="GradleDependency"
+        severity="warning"
+        message="A newer version of com.github.Blatzar:NiceHttp than 0.4.11 is available: 0.4.18">
+        <fix-replace
+            description="Change to 0.4.18"
+            family="Update versions"
+            oldString="0.4.11"
+            replacement="0.4.18"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="12"
+            column="12"
+            startOffset="414"
+            endLine="12"
+            endColumn="20"
+            endOffset="422"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of com.google.code.gson:gson than 2.13.2 is available: 2.15.0">
+        <fix-replace
+            description="Change to 2.15.0"
+            family="Update versions"
+            oldString="2.13.2"
+            replacement="2.15.0"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="6"
+            column="8"
+            startOffset="148"
+            endLine="6"
+            endColumn="16"
+            endOffset="156"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of com.fasterxml.jackson.module:jackson-module-kotlin than 2.13.1 is available: 2.22.4">
+        <fix-replace
+            description="Change to 2.22.4"
+            family="Update versions"
+            oldString="2.13.1"
+            replacement="2.22.4"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="9"
+            column="11"
+            startOffset="321"
+            endLine="9"
+            endColumn="19"
+            endOffset="329"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-core than 1.10.2 is available: 1.11.0">
+        <fix-replace
+            description="Change to 1.11.0"
+            family="Update versions"
+            oldString="1.10.2"
+            replacement="1.11.0"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="10"
+            column="27"
+            startOffset="357"
+            endLine="10"
+            endColumn="35"
+            endOffset="365"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-test than 1.10.2 is available: 1.11.0">
+        <fix-replace
+            description="Change to 1.11.0"
+            family="Update versions"
+            oldString="1.10.2"
+            replacement="1.11.0"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="11"
+            column="27"
+            startOffset="393"
+            endLine="11"
+            endColumn="35"
+            endOffset="401"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of org.jsoup:jsoup than 1.22.1 is available: 1.23.2">
+        <fix-replace
+            description="Change to 1.23.2"
+            family="Update versions"
+            oldString="1.22.1"
+            replacement="1.23.2"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="13"
+            column="9"
+            startOffset="432"
+            endLine="13"
+            endColumn="17"
+            endOffset="440"/>
+    </incident>
+
+    <incident
+        id="NewerVersionAvailable"
+        severity="warning"
+        message="A newer version of org.jetbrains.kotlin.android than 2.3.0 is available: 2.4.21">
+        <fix-replace
+            description="Change to 2.4.21"
+            family="Update versions"
+            oldString="2.3.0"
+            replacement="2.4.21"
+            priority="0"/>
+        <location
+            file="$HOME/Desktop/CloudPlug/gradle/libs.versions.toml"
+            line="14"
+            column="10"
+            startOffset="451"
+            endLine="14"
+            endColumn="17"
+            endOffset="458"/>
+    </incident>
+
+</incidents>

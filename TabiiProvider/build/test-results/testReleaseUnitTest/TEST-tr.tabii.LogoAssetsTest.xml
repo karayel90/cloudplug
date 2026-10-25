@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.tabii.LogoAssetsTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:02:14.269Z" hostname="KARAYELPC" time="0.006">
+  <properties/>
+  <testcase name="bilinen kanal icin kendi barindirdigimiz poster doner" classname="tr.tabii.LogoAssetsTest" time="0.005"/>
+  <testcase name="hazir logosu olmayan kanal ham adrese duser" classname="tr.tabii.LogoAssetsTest" time="0.0"/>
+  <testcase name="normalize edilmis ad anahtar olarak kullanilir" classname="tr.tabii.LogoAssetsTest" time="0.0"/>
+  <testcase name="tabii kanali slug ile kendi deposundan poster alir" classname="tr.tabii.LogoAssetsTest" time="0.0"/>
+  <testcase name="ace stream kanali kimligi ile kendi deposundan poster alir" classname="tr.tabii.LogoAssetsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

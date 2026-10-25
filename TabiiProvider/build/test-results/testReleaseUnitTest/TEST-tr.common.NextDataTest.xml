@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.common.NextDataTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:02:14.070Z" hostname="KARAYELPC" time="0.145">
+  <properties/>
+  <testcase name="parsesTree" classname="tr.common.NextDataTest" time="0.142"/>
+  <testcase name="returnsNullOnBrokenJson" classname="tr.common.NextDataTest" time="0.001"/>
+  <testcase name="missingPathYieldsNull" classname="tr.common.NextDataTest" time="0.0"/>
+  <testcase name="extractsRawJson" classname="tr.common.NextDataTest" time="0.0"/>
+  <testcase name="returnsNullWhenBlockMissing" classname="tr.common.NextDataTest" time="0.0"/>
+  <testcase name="findsNestedImageByKey" classname="tr.common.NextDataTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

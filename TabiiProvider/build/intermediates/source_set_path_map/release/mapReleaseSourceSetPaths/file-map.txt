@@ -1,0 +1,8 @@
+tr.tabii.TabiiProvider-pngs-0 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\generated\res\pngs\release
+tr.tabii.TabiiProvider-resValues-1 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\generated\res\resValues\release
+tr.tabii.TabiiProvider-updated_navigation_xml-2 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\generated\updated_navigation_xml\release
+tr.tabii.TabiiProvider-mergeReleaseResources-3 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\intermediates\incremental\release\mergeReleaseResources\merged.dir
+tr.tabii.TabiiProvider-mergeReleaseResources-4 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir
+tr.tabii.TabiiProvider-release-5 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\build\intermediates\merged_res\release\mergeReleaseResources
+tr.tabii.TabiiProvider-main-6 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\res
+tr.tabii.TabiiProvider-release-7 C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\release\res

@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider"
+    name=":TabiiProvider"
+    type="LIBRARY"
+    maven="CloudstreamPlugins:TabiiProvider:30"
+    agpVersion="8.13.2"
+    buildFolder="build"
+    bootClassPath="C:\Users\KARAYEL\AppData\Local\Android\Sdk\platforms\android-35\android.jar;C:\Users\KARAYEL\AppData\Local\Android\Sdk\build-tools\35.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="11"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="debug"/>
+</lint-module>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.tabii.AceStreamChannelsTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:10:25.171Z" hostname="KARAYELPC" time="0.065">
+  <properties/>
+  <testcase name="her kanalin gecerli content id si var" classname="tr.tabii.AceStreamChannelsTest" time="0.051"/>
+  <testcase name="kimlik ve ad ile kanal bulma" classname="tr.tabii.AceStreamChannelsTest" time="0.001"/>
+  <testcase name="content ID eşleşmeleri doğru" classname="tr.tabii.AceStreamChannelsTest" time="0.006"/>
+  <testcase name="arama adlari kanal basina benzersiz" classname="tr.tabii.AceStreamChannelsTest" time="0.001"/>
+  <testcase name="content ID'ler kanal icinde benzersiz" classname="tr.tabii.AceStreamChannelsTest" time="0.002"/>
+  <testcase name="kanal adlari Turkce HD versiyonlari" classname="tr.tabii.AceStreamChannelsTest" time="0.0"/>
+  <testcase name="content id ile kanal bulma" classname="tr.tabii.AceStreamChannelsTest" time="0.0"/>
+  <testcase name="kanal kimlikleri benzersiz" classname="tr.tabii.AceStreamChannelsTest" time="0.001"/>
+  <testcase name="silinen kanallar artik yok" classname="tr.tabii.AceStreamChannelsTest" time="0.0"/>
+  <testcase name="her kanalin arama adi var" classname="tr.tabii.AceStreamChannelsTest" time="0.0"/>
+  <testcase name="sadece uc kanal var" classname="tr.tabii.AceStreamChannelsTest" time="0.001"/>
+  <testcase name="arama adlari sadece HD varyantlarini icerir" classname="tr.tabii.AceStreamChannelsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

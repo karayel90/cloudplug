@@ -1,0 +1,14 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml:1:39-50
+INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml:1:39-50
+	package
+		INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml
+uses-sdk
+INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml
+INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\KARAYEL\Desktop\CloudPlug\TabiiProvider\src\main\AndroidManifest.xml

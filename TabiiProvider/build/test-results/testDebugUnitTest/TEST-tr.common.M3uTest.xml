@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="tr.common.M3uTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-25T01:10:24.795Z" hostname="KARAYELPC" time="0.064">
+  <properties/>
+  <testcase name="esit cozunurlukte https tercih edilir" classname="tr.common.M3uTest" time="0.05"/>
+  <testcase name="benzer adlar cift kanal sayilir" classname="tr.common.M3uTest" time="0.005"/>
+  <testcase name="farkli kanallar birlestirilmez" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="kayit duzlestirilmis adi hazir tutar" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="ayni tvg-id farkli adlar tek kanal sayilmaz" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="adresi olmayan kayit atlanir" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="normalizasyon bos basligi bos anahtara cevirir" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="cift kanal en yuksek cozunurlukten birakilir" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="temel ayristirma" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="extvlcopt user agent ve referrer takip eden kayda uygulanir" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="turkce karakterler duzlestirilir" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="cozunurluk puani basliktan okunur" classname="tr.common.M3uTest" time="0.001"/>
+  <testcase name="cozunurluk olcekleme 4k ve 8k" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="bos ve yorum satirlari atlanir" classname="tr.common.M3uTest" time="0.0"/>
+  <testcase name="user-agent iceren baslik bozulmadan okunur" classname="tr.common.M3uTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
