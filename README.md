@@ -16,7 +16,6 @@ Uygulama → Ayarlar → Uzantılar → Depo Ekle kısmına şu bağlantıyı ya
 https://raw.githubusercontent.com/karayel90/cloudplug/refs/heads/main/repo.json
 ```
 
-Gereksinim: Cihazda Ace Stream kurulu ve çalışıyor olmalıdır. Motor yalnızca uygulama açıkken ayakta kalır; uygulama arka planda kapatılırsa motor durur ve eklenti net bir mesajla uyarır.
 
 📄 Lisans
 
