@@ -1,8 +1,4 @@
-                                          🇹🇷 Cloudstream Eklentileri (Türkçe İçerik)
-                                                            -
-                                                            -
-                                                            -
-
+<img width="2172" height="724" alt="Koyu Arka Planda Cloudplug Logosu" src="https://github.com/user-attachments/assets/5b8a72fa-f50e-4128-850a-90cd62122d80" />
 
 📖 Bu nedir?
 
