@@ -137,17 +137,17 @@ class TabiiProvider : MainAPI() {
         // tuvale sığdırdığı için kart oranı değişse de logo kırpılmaz.
         val aceDirect = listOf(
             Triple("Beinsports-1-Server", "https://andro.evrenesoglu215.click/checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
-            Triple("Beinsports-2-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8", "bein-sports-hd-2-tr"),
+            Triple("Beinsports-2-Server", "https://andro.evrenesoglu215.click/checklist/androstreamlivebs2.m3u8", "bein-sports-hd-2-tr"),
             Triple("Beinsports-3-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8", "bein-sports-hd-3-tr"),
-            Triple("Beinsports-4-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs4.m3u8", "beinsports-4-server"),
-            Triple("Beinsports-5-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs5.m3u8", "beinsports-5-server"),
-            Triple("S Sport", "https://andro.evrenesoglu213.click/checklist/androstreamlivess1.m3u8", "s-sport"),
-            Triple("S Sport 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivess2.m3u8", "s-sport-2"),
-            Triple("S Sport Plus", "https://andro.evrenesoglu213.click/checklist/androstreamlivessplus1.m3u8", "s-sport-plus"),
-            Triple("Tivibu Spor 1", "https://andro.evrenesoglu213.click/checklist/androstreamlivets1.m3u8", "tivibu-spor-1"),
-            Triple("Tivibu Spor 2", "https://andro.evrenesoglu213.click/checklist/androstreamlivets2.m3u8", "tivibu-spor-2"),
-            Triple("Tivibu Spor 3", "https://andro.evrenesoglu213.click/checklist/androstreamlivets3.m3u8", "tivibu-spor-3"),
-            Triple("Tivibu Spor 4", "https://andro.evrenesoglu213.click/checklist/androstreamlivets4.m3u8", "tivibu-spor-4"),
+            Triple("Beinsports-4-Server", "https://andro.evrenesoglu215.click/checklist/androstreamlivebs4.m3u8", "beinsports-4-server"),
+            Triple("Beinsports-5-Server", "https://andro.evrenesoglu215.click/checklist/androstreamlivebs5.m3u8", "beinsports-5-server"),
+            Triple("S Sport", "https://andro.evrenesoglu215.click/checklist/androstreamlivess1.m3u8", "s-sport"),
+            Triple("S Sport 2", "https://andro.evrenesoglu215.click/checklist/androstreamlivess2.m3u8", "s-sport-2"),
+            Triple("S Sport Plus", "https://andro.evrenesoglu215.click/checklist/androstreamlivessplus1.m3u8", "s-sport-plus"),
+            Triple("Tivibu Spor 1", "https://andro.evrenesoglu215.click/checklist/androstreamlivets1.m3u8", "tivibu-spor-1"),
+            Triple("Tivibu Spor 2", "https://andro.evrenesoglu215.click/checklist/androstreamlivets2.m3u8", "tivibu-spor-2"),
+            Triple("Tivibu Spor 3", "https://andro.evrenesoglu215.click/checklist/androstreamlivets3.m3u8", "tivibu-spor-3"),
+            Triple("Tivibu Spor 4", "https://andro.evrenesoglu215.click/checklist/androstreamlivets4.m3u8", "tivibu-spor-4"),
         )
         val aceResults = AceStreamChannels.ALL.map { it.toSearchResult() } + aceDirect.map { (t, u, key) ->
             newLiveSearchResponse(t, u, TvType.Live) {
@@ -183,17 +183,17 @@ class TabiiProvider : MainAPI() {
         // Direct HLS channels in Ace Stream section (Beinsports servers)
         val directAce = listOf(
             "https://andro.evrenesoglu215.click/checklist/androstreamlivebs1.m3u8" to "Beinsports-1-Server",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8" to "Beinsports-2-Server",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8" to "Beinsports-3-Server",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs4.m3u8" to "Beinsports-4-Server",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs5.m3u8" to "Beinsports-5-Server",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivess1.m3u8" to "S Sport",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivess2.m3u8" to "S Sport 2",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivessplus1.m3u8" to "S Sport Plus",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivets1.m3u8" to "Tivibu Spor 1",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivets2.m3u8" to "Tivibu Spor 2",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivets3.m3u8" to "Tivibu Spor 3",
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivets4.m3u8" to "Tivibu Spor 4",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivebs2.m3u8" to "Beinsports-2-Server",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivebs3.m3u8" to "Beinsports-3-Server",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivebs4.m3u8" to "Beinsports-4-Server",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivebs5.m3u8" to "Beinsports-5-Server",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivess1.m3u8" to "S Sport",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivess2.m3u8" to "S Sport 2",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivessplus1.m3u8" to "S Sport Plus",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivets1.m3u8" to "Tivibu Spor 1",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivets2.m3u8" to "Tivibu Spor 2",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivets3.m3u8" to "Tivibu Spor 3",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivets4.m3u8" to "Tivibu Spor 4",
         )
         val directTitle = directAce.firstOrNull { it.first == url }?.second
         if (directTitle != null) {
