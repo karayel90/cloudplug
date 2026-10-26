@@ -136,7 +136,7 @@ class TabiiProvider : MainAPI() {
         // Her iki satır da yatay kartlarla çizilir; [LogoAssets] logoları kare
         // tuvale sığdırdığı için kart oranı değişse de logo kırpılmaz.
         val aceDirect = listOf(
-            Triple("Beinsports-1-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
+            Triple("Beinsports-1-Server", "https://andro.evrenesoglu215.click/checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
             Triple("Beinsports-2-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8", "bein-sports-hd-2-tr"),
             Triple("Beinsports-3-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8", "bein-sports-hd-3-tr"),
             Triple("Beinsports-4-Server", "https://andro.evrenesoglu213.click/checklist/androstreamlivebs4.m3u8", "beinsports-4-server"),
