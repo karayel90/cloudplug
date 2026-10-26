@@ -182,7 +182,7 @@ class TabiiProvider : MainAPI() {
     override suspend fun load(url: String): LoadResponse {
         // Direct HLS channels in Ace Stream section (Beinsports servers)
         val directAce = listOf(
-            "https://andro.evrenesoglu213.click/checklist/androstreamlivebs1.m3u8" to "Beinsports-1-Server",
+            "https://andro.evrenesoglu215.click/checklist/androstreamlivebs1.m3u8" to "Beinsports-1-Server",
             "https://andro.evrenesoglu213.click/checklist/androstreamlivebs2.m3u8" to "Beinsports-2-Server",
             "https://andro.evrenesoglu213.click/checklist/androstreamlivebs3.m3u8" to "Beinsports-3-Server",
             "https://andro.evrenesoglu213.click/checklist/androstreamlivebs4.m3u8" to "Beinsports-4-Server",
