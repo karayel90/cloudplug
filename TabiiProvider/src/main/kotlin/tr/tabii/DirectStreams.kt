@@ -131,10 +131,10 @@ object DirectStreams {
     private val HOST_NUMBER = Regex("""evrenesoglu(\d+)\.click""")
 
     /** Tarama sirasinda baz numaranin etrafinda taranacak yaricap. */
-    internal const val SWEEP_RADIUS = 8
+    internal const val SWEEP_RADIUS = 10
 
     /** Bir kerede eszamanli denenecek en fazla aday sayisi. */
-    private const val PARALLEL_LIMIT = 3
+    private const val PARALLEL_LIMIT = 5
 
     /** Tek bir dogrulama isteginin zaman asimi. */
     private const val PROBE_TIMEOUT_MS = 4_000L
@@ -150,7 +150,7 @@ object DirectStreams {
      * Not: olum makinelerin cogu hizli hata doner (NXDOMAIN/403); butce yalnizca
      * zaman asiminda bekleyenler icin sigortadir, aday sayisini kisitlemez.
      */
-    private const val TOTAL_PROBE_BUDGET_MS = 12_000L
+    private const val TOTAL_PROBE_BUDGET_MS = 8_000L
 
     /**
      * Son dogrulamanin ustunden kisa sure gectiyse istek atilmaz.
@@ -158,7 +158,7 @@ object DirectStreams {
      * Ayni etkileşim zinciri (ana sayfa -> arama -> yukleme) icin tasarlandi;
      * makine olumu ilk yeniden dokunusta fark edilsin diye kisa tutulur.
      */
-    internal const val TRUST_WINDOW_MS = 5_000L
+    internal const val TRUST_WINDOW_MS = 15_000L
 
     private data class HostCache(
         val host: String,
@@ -298,3 +298,5 @@ object DirectStreams {
         host
     }
 }
+
+
