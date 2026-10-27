@@ -54,30 +54,24 @@ object AceStreamApp {
     /**
      * CS3 uygulamasinin Context'ini bulur.
      *
-     * CS3'ün uygulama modulu siniflari runtime'da pluginin classloader'ina
-     * erisilebilirdir, ancak derleme zamaninda gorunmez (plugin yalnizca
-     * `cloudstream3` kutuphanesine karsi derlenir). Bu yuzden yansima
-     * kullanilir.
+     * CS3, context'i `com.lagradost.api.getContext()` uzerinden resmi API
+     * olarak sunar; deger `CloudStreamApp.attachBaseContext` sirasinda
+     * `setContext` ile kaydedilir, yani plugin kodundan hep once hazirdir.
+     * Yansima gerekmez; cagri sabit ismdir (~mikrosaniye).
      *
-     * Yansima sonucu (Method) ilk cagridida cache'lenir: `Class.forName` +
-     * `getMethod` ayni process'te sonuc degistirmez; sonraki cagrilarda yalnizca
-     * `invoke` calisir (kanal yukleme basina 1-4 ms -> ~0.02 ms).
-     * Basarisiz ilk cagridi da bir kez kaydedilip loglanir (lazy tekrar denemez).
+     * Duzeltme notu (cihaz testinde yakalandi): onceki kod
+     * `CloudStreamApp` sinifinda STATIK `getContext` ariyordu; oysa metot
+     * `@JvmStatic` olmadan companion objesinde oldugundan CS3 4.8.0'da
+     * `NoSuchMethodException` ile hep basarisiz kaliyordu (log:
+     * "CS3 bağlamı bulunamadı: ...CloudStreamApp.getContext"). Sonuc:
+     * motor asla otomatik baslatilamiyor ve uygulamaya devir atlaniyordu.
+     *
+     * @return Android'de CS3 baglami; kayit yoksa `null`.
      */
-    private val cs3ContextMethod: java.lang.reflect.Method? by lazy {
-        try {
-            Class.forName("com.lagradost.cloudstream3.CloudStreamApp")
-                .getMethod("getContext")
-        } catch (t: Throwable) {
-            Log.w(TAG, "CS3 bağlamı bulunamadı: ${t.message}")
-            null
-        }
-    }
-
     fun cs3Context(): Context? = try {
-        cs3ContextMethod?.invoke(null) as? Context
+        com.lagradost.api.getContext() as? Context
     } catch (t: Throwable) {
-        Log.w(TAG, "CS3 bağlamı kullanılamadı: ${t.message}")
+        Log.w(TAG, "CS3 bağlamı alınamadı: ${t.message}")
         null
     }
 
