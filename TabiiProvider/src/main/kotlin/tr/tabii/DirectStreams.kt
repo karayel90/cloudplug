@@ -141,6 +141,19 @@ object DirectStreams {
     private const val PROBE_TIMEOUT_MS = 4_000L
 
     /**
+     * Taramanin toplam butcesi: kuyruk sure dolunca durur.
+     *
+     * Kuyruk aday basina 4 sn'ye kadar bekleyebilir; ~60 adaylik listede bu
+     * ~200+ sn (siyah-delik makinelerde) demekti — kullanici kanal acilirken
+     * bekler. Butce: bas paralel (~4 sn) + kuyruk kalan sure. Butce dolunca
+     * tarama erken biter ve [refreshHost]'taki gibi [PRIMARY_HOST]'a donulur
+     * (kuyrunun sonuna kadar beklenmesiyle AYNI sonuc, daha hizli).
+     * Not: olum makinelerin cogu hizli hata doner (NXDOMAIN/403); butce yalnizca
+     * zaman asiminda bekleyenler icin sigortadir, aday sayisini kisitlemez.
+     */
+    private const val TOTAL_PROBE_BUDGET_MS = 12_000L
+
+    /**
      * Son dogrulamanin ustunden kisa sure gectiyse istek atilmaz.
      *
      * Ayni etkileşim zinciri (ana sayfa -> arama -> yukleme) icin tasarlandi;
@@ -232,15 +245,20 @@ object DirectStreams {
      *
      * Adaylar once paralel (en fazla [PARALLEL_LIMIT]), kalanlar sirali
      * denenir; boylece yaygin durumda (ilk adaylar olu) kurtarma maliyeti
-     * uc istekle sinirli kalir. Calisan makine yoksa `null`.
+     * uc istekle sinirli kalir. Kuyruk [TOTAL_PROBE_BUDGET_MS] icinde biter;
+     * butce asilirsa tarama erken sonlanir. Calisan makine yoksa `null`.
      */
     internal suspend fun probeBest(probePath: String): String? = coroutineScope {
         val hosts = candidateHosts(PRIMARY_HOST)
+        // Baslangicta baslar: bas paralel (~4 sn) + kuyruk kalan sureyi tuketir
+        // (AceStream.workingAndError ile ayni desen).
+        val deadline = System.currentTimeMillis() + TOTAL_PROBE_BUDGET_MS
         val head = hosts.take(PARALLEL_LIMIT)
             .map { candidate -> async { candidate to hostAlive(candidate, probePath) } }
             .awaitAll()
         head.firstOrNull { it.second }?.let { return@coroutineScope it.first }
         for (candidate in hosts.drop(PARALLEL_LIMIT)) {
+            if (System.currentTimeMillis() > deadline) break // butce doldu; kuyruk durur
             if (hostAlive(candidate, probePath)) return@coroutineScope candidate
         }
         null
