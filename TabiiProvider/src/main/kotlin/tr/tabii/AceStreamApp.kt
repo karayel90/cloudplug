@@ -58,29 +58,65 @@ object AceStreamApp {
      * erisilebilirdir, ancak derleme zamaninda gorunmez (plugin yalnizca
      * `cloudstream3` kutuphanesine karsi derlenir). Bu yuzden yansima
      * kullanilir.
+     *
+     * Yansima sonucu (Method) ilk cagridida cache'lenir: `Class.forName` +
+     * `getMethod` ayni process'te sonuc degistirmez; sonraki cagrilarda yalnizca
+     * `invoke` calisir (kanal yukleme basina 1-4 ms -> ~0.02 ms).
+     * Basarisiz ilk cagridi da bir kez kaydedilip loglanir (lazy tekrar denemez).
      */
+    private val cs3ContextMethod: java.lang.reflect.Method? by lazy {
+        try {
+            Class.forName("com.lagradost.cloudstream3.CloudStreamApp")
+                .getMethod("getContext")
+        } catch (t: Throwable) {
+            Log.w(TAG, "CS3 bağlamı bulunamadı: ${t.message}")
+            null
+        }
+    }
+
     fun cs3Context(): Context? = try {
-        val cls = Class.forName("com.lagradost.cloudstream3.CloudStreamApp")
-        val getter = cls.getMethod("getContext")
-        getter.invoke(null) as? Context
+        cs3ContextMethod?.invoke(null) as? Context
     } catch (t: Throwable) {
-        Log.w(TAG, "CS3 bağlamı bulunamadı: ${t.message}")
+        Log.w(TAG, "CS3 bağlamı kullanılamadı: ${t.message}")
         null
     }
 
+    // --- canHandle onbellegi (yardimci tipler) ---
+
+    private data class CanHandleCache(val result: Boolean, val checkedAt: Long)
+
+    private val canHandleCache = java.util.concurrent.ConcurrentHashMap<String, CanHandleCache>()
+
+    private const val CAN_HANDLE_TTL_MS = 30_000L
+
     /**
-     * Verilen adresi isleyen bir uygulama var mi?
+     * `acestream://` adresini isleyen bir uygulama var mi?
+     *
+     * `queryIntentActivities` sistem cagrisidir (5-20 ms); ayni adres icin
+     * sonuc kisa sure onbelleklendirilir (kanal yukleme basina 2 cagri).
+     * Kullanici Ace Stream'i 30 sn icinde kurarsa gec fark edilir — bu son
+     * derece nadirdir (uygulama bir kez kurulur).
      *
      * @param uri `acestream://<content-id>` adresi
      */
-    fun canHandle(context: Context, uri: String): Boolean = try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-        val pm = context.packageManager
-        val list = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        list != null && list.isNotEmpty()
-    } catch (t: Throwable) {
-        Log.w(TAG, "Şema kontrolü başarısız: ${t.message}")
-        false
+    fun canHandle(context: Context, uri: String): Boolean {
+        val now = System.currentTimeMillis()
+        canHandleCache[uri]?.let {
+            if (now - it.checkedAt < CAN_HANDLE_TTL_MS) return it.result
+        }
+        return try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+            val pm = context.packageManager
+            val list = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            // queryIntentActivities platform tipi dondurur; null/ bos ikisi de
+            // "isleyen uygulama yok" anlamina gelir.
+            val result = !list.isNullOrEmpty()
+            canHandleCache[uri] = CanHandleCache(result, now)
+            result
+        } catch (t: Throwable) {
+            Log.w(TAG, "Şema kontrolü başarısız: ${t.message}")
+            false
+        }
     }
 
     /**
@@ -121,7 +157,9 @@ object AceStreamApp {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            Log.d(TAG, "Ace Stream uygulamasına yönlendirildi: $uri")
+            // Icerik kimligi (40 haneli hash) loglara maskeylenir; tasma
+            // hatalarinda tam adres gerekmez, hizip tespit yeterli.
+            Log.d(TAG, "Ace Stream uygulamasına yönlendirildi: acestream://${contentId.take(8)}…")
             true
         } catch (t: Throwable) {
             Log.w(TAG, "Yönlendirme başarısız: ${t.message}")

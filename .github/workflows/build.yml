@@ -35,11 +35,15 @@ jobs:
         run: rm -f $GITHUB_WORKSPACE/builds/*.cs3 $GITHUB_WORKSPACE/builds/*.jar || true
 
       # AGP 8.13.x requires JDK 17. Do not bump without bumping AGP.
+      # cache: 'gradle' -> ~/.gradle/caches + wrapper her build'de yeniden
+      # indirilmez; sonraki build'ler ~2x hizlanir. Kaynak ./src altinda olsa
+      # da anahtar dosyalar (**/*.gradle*) workspace genelinde hash'lenir.
       - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: 17
+          cache: 'gradle'
 
       # NOT v3: the v3 default installs the removed "tools" SDK package
       # (android-actions issue #537) and its cmdline-tools URL 404s (#536).

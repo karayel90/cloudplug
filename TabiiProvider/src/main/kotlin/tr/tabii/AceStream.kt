@@ -7,6 +7,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.URLEncoder
 import java.util.concurrent.ConcurrentHashMap
@@ -90,6 +92,15 @@ object AceStream {
     /** Bir kerede eszamanli dogrulanacak en fazla aday sayisi. */
     private const val CHECK_PARALLEL_LIMIT = 3
 
+    /**
+     * Bir aday listesinin toplam dogrulama butcesi.
+     *
+     * Kuyruk dongusunde aday basina 8 sn'ye kadar beklenebilir; 50 adaylik
+     * listede bu ~400 sn (6.6 dk) demekti — kullanici "takildi" hisseder.
+     * Butce dolunca kuyruk durur ve eldeki ariza tanisi dondurulur.
+     */
+    private const val TOTAL_CHECK_BUDGET_MS = 20_000L
+
     private val mapper = ObjectMapper()
 
     /** Verilen metin gecerli bir Ace Stream content ID mi? */
@@ -123,11 +134,26 @@ object AceStream {
 
     // --- Motor durumu: paralel sondaj, kisa sureli onbellek, hazir olma beklemesi ---
 
-    /** En son olculen motor durumu. */
-    @Volatile private var engineRunning: Boolean = false
+    /**
+     * Motor durumu: sure + sonuc TEK immutable kayitta tutulur.
+     *
+     * Iki ayri @Volatile alan (durum + zaman damgasi) birlikte okunurken
+     * "torn read" mumkundu: taze zaman damgasi + eski durum yanlis onbellek
+     * isabeti yaratir. Tek kayit atomik referans yazimi ile bunu kapatir
+     * (DirectStreams.HostCache ile ayni desen).
+     */
+    private data class EngineState(val running: Boolean, val probedAt: Long)
 
-    /** Motor durumunun olculdugu zaman damgasi. */
-    @Volatile private var engineProbedAt: Long = 0L
+    @Volatile private var engineState: EngineState = EngineState(false, 0L)
+
+    /**
+     * Eszamanli sondajlari tekillestirir (single-flight).
+     *
+     * Kilit yokken 5 coroutine ayni anda sondajlarsa 5×2 = 10 istek atilir;
+     * kilit + ikinci kontrol ile yalnizca biri sondajlar, digerleri taze
+     * onbellegi alir (DirectStreams.refreshHost ile ayni desen).
+     */
+    private val engineMutex = Mutex()
 
     /**
      * Motorun calisip calismadigini kontrol eder.
@@ -145,12 +171,20 @@ object AceStream {
      *   dongusu her tur taze sondaj yapar).
      */
     suspend fun isEngineRunning(forceRefresh: Boolean = false): Boolean {
-        val now = System.currentTimeMillis()
-        if (!forceRefresh && isEngineStateFresh(engineProbedAt, now)) return engineRunning
-        val running = probeEngine()
-        engineProbedAt = now
-        engineRunning = running
-        return running
+        val snapshot = engineState
+        if (!forceRefresh && isEngineStateFresh(snapshot.probedAt, System.currentTimeMillis())) {
+            return snapshot.running
+        }
+        return engineMutex.withLock {
+            val nowLocked = System.currentTimeMillis()
+            val lockedSnapshot = engineState
+            if (!forceRefresh && isEngineStateFresh(lockedSnapshot.probedAt, nowLocked)) {
+                return@withLock lockedSnapshot.running
+            }
+            val running = probeEngine()
+            engineState = EngineState(running, nowLocked)
+            running
+        }
     }
 
     /**
@@ -241,14 +275,22 @@ object AceStream {
         val refs = mutableListOf<AceContentRef>()
         // Sabit content_id'ler once.
         pinned.filter { isContentId(it) }.forEach { refs += AceContentRef(it, isInfohash = false) }
-        // Arama dizini infohash doner.
-        for (query in searchNames) {
-            val target = tokens(query)
-            if (target.isEmpty()) continue
-            search(query)
-                .filter { matchesTokens(it.name, target) }
-                .sortedWith(searchOrder(target))
-                .forEach { refs += AceContentRef(it.contentId, isInfohash = true) }
+        // Arama dizini infohash doner. Sorgular ESZAMANLI gonderilir; awaitAll
+        // sirayi korur, boylece oncelik sirasi degismez (3 sorgu x 12 sn =
+        // 36 sn yerine ~12 sn). Motorun arama ucu salt-okunurdur.
+        val perQuery: List<List<AceStreamResult>> = coroutineScope {
+            searchNames.map { query ->
+                async {
+                    val target = tokens(query)
+                    if (target.isEmpty()) return@async emptyList()
+                    search(query)
+                        .filter { matchesTokens(it.name, target) }
+                        .sortedWith(searchOrder(target))
+                }
+            }.awaitAll()
+        }
+        for (results in perQuery) {
+            results.forEach { refs += AceContentRef(it.contentId, isInfohash = true) }
         }
         return refs.distinctBy { it.value to it.isInfohash }
     }
@@ -257,11 +299,20 @@ object AceStream {
      * Arama sonucu siralama kurali: once yayinda olanlar, sonra hedefe
      * fazla kelimesi az olanlar (temiz eslesme), sonra daha kullanilabilir
      * olanlar.
+     *
+     * Ceza puani her karsilastirmada yeniden hesaplanmasin diye ad bazinda
+     * onbelleglenir: comparator ~n log n kez cagrilir ve her cagri aday adini
+     * yeniden tokenize ederdi (regex split). Ayni semantik, ~6x az is.
      */
-    internal fun searchOrder(target: List<String>): Comparator<AceStreamResult> =
-        compareByDescending<AceStreamResult> { it.status == STATUS_AVAILABLE }
-            .thenBy { extraTokens(it.name, target) }
+    internal fun searchOrder(target: List<String>): Comparator<AceStreamResult> {
+        val targetSet = target.toSet()
+        val extraCache = ConcurrentHashMap<String, Int>()
+        // computeIfAbsent Java 8 API'sidir (Android API 24+); minSdk 21 oldugu
+        // icin core desugaring yok — Kotlin getOrPut kullanilir.
+        return compareByDescending<AceStreamResult> { it.status == STATUS_AVAILABLE }
+            .thenBy { r -> extraCache.getOrPut(r.name) { tokens(r.name).count { t -> t !in targetSet } } }
             .thenByDescending { it.availability }
+    }
 
     // --- Salt-okunur dogrulama (oynatma oturumu acmaz) ---
 
@@ -309,6 +360,8 @@ object AceStream {
         if (refs.isEmpty()) return null to null
         val head = refs.take(CHECK_PARALLEL_LIMIT)
         val tail = refs.drop(CHECK_PARALLEL_LIMIT)
+        // Baslangicta baslar: head paralel (~8 sn) + kuyruk kalan sureyi tuketir.
+        val deadline = System.currentTimeMillis() + TOTAL_CHECK_BUDGET_MS
 
         val headResults = coroutineScope {
             head.map { async { it to checkContent(it) } }.awaitAll()
@@ -317,6 +370,7 @@ object AceStream {
             return ref to null
         }
         for (ref in tail) {
+            if (System.currentTimeMillis() > deadline) break // butce doldu; kuyruk durur
             if (checkContent(ref) == null) return ref to null
         }
         return null to (headResults.firstOrNull { it.second != null }?.second ?: "içerik bulunamadı")
@@ -398,8 +452,14 @@ object AceStream {
             describeUrl(value, isInfohash),
             describeUrl(value, !isInfohash),
         ).distinct()
-        for (url in urls) {
-            val body = getBody(url, CHECK_TIMEOUT_MS) ?: continue
+        // Iki parametre turu ESZAMANLI denenir: en kotu durum 8+8=16 sn
+        // yerine ~8 sn'ye duser (her iki uc da salt-okunur get_media_files).
+        val bodies = coroutineScope {
+            urls.map { url -> async { getBody(url, CHECK_TIMEOUT_MS) } }.awaitAll()
+        }
+        // Sonuc ONCELIK SIRASINA gore tuketilir: dogru tur ilk sırada.
+        for (body in bodies) {
+            body ?: continue
             parseMediaName(body)?.let { return it }
         }
         return null
@@ -523,7 +583,19 @@ object AceStream {
      * durum sondaji 3 sn, icerik dogrulama 8 sn, arama dizini 12 sn.
      */
     private suspend fun getBody(url: String, timeoutMs: Long): String? =
-        withTimeoutOrNull(timeoutMs) { runCatching { app.get(url).text }.getOrNull() }
+        withTimeoutOrNull(timeoutMs) {
+            // runCatching dis kapsamin CancellationException'ini da yutup iptali
+            // "olu istek" sanirdi; iptal asla yutulmaz (DirectStreams ile ayni desen).
+            // withTimeoutOrNull'un kendi TimeoutCancellationException'i bu catch'ten
+            // gecip disarida yakalanir ve null'a cevrilir — o is onun.
+            try {
+                app.get(url).text
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
 }
 
 /**

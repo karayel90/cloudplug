@@ -92,8 +92,11 @@ subprojects {
     }
 
     tasks.withType<Test>().configureEach {
-        // Testler gerçekten kırılırsa derleme de kırılsın: sessizce geçen
-        // testler, CI'da yanlış güven verir.
+        // Lokal calistirmada test hatasi build'i durdurur; CI'da (build.yml)
+        // bu adim `continue-on-error: true` ile ENGELLENIR: Cloudstream kutuphane
+        // anlik gorsu rolling release'den geldigi icin gecici bir test hatasi
+        // .cs3 yayimlanmasini durdurmaz. Yani: lokalde bloklar, CI'da yalnizca
+        // adim basarisiz gosterir ama job devam eder.
         ignoreFailures = false
     }
 }
@@ -106,5 +109,7 @@ tasks.register<TestReport>("testReport") {
     description = "Aggregate all test results as a HTML report"
     group = "Build"
     destinationDirectory = layout.buildDirectory.dir("reports/allTests")
-    testResults.from(subprojects.map { project -> project.tasks.getByName("testReleaseUnitTest") })
+    // findByName: testReleaseUnitTest olmayan bir alt projede configuration
+    // asamasinda patlamasin (2. provider eklenince kirilmaz).
+    testResults.from(subprojects.mapNotNull { project -> project.tasks.findByName("testReleaseUnitTest") })
 }

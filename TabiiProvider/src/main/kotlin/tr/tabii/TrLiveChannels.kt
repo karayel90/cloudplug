@@ -229,7 +229,15 @@ object TrLiveChannels {
 
     /** Listeyi indirir, temizler ve önbelleğe yazar; başarısızsa `null`. */
     private suspend fun refresh(): Catalog? {
-        val text = runCatching { app.get(PLAYLIST_URL).text }.getOrNull() ?: return null
+        // runCatching CancellationException'i da yutardi; mutex altinda iptalin
+        // yayilmamasi beklemeyi uzatirdi (TabiiProvider.refresh ile ayni desen).
+        val text = try {
+            app.get(PLAYLIST_URL).text
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return null
         val parsed = withoutDeadStreams(withExtraChannels(M3u.parse(text)))
         val entries = sortByPopularity(M3u.dedupeByBestResolution(parsed))
         if (entries.isEmpty()) return null

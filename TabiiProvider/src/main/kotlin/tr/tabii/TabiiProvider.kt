@@ -46,7 +46,11 @@ class TabiiProvider : MainAPI() {
     private companion object {
         const val SEED_SLUG = "trt1"
         const val SEED_TRACK_ID = 150002
-        const val CACHE_TTL_MS = 5 * 60 * 1000L
+
+        // Tabii'nin kanal listesi saatlerce degismez; 5 dakika her acilista
+        // gereksiz indirme + parse uretiyordu. 15 dakika tazelik ile gider
+        // (elle yenileme search(allowStale=false) yine taze ceker).
+        const val CACHE_TTL_MS = 15 * 60 * 1000L
 
         /** Ana sayfadaki Ace Stream bolumunun adi. */
         const val ACE_SECTION = "Ace Stream"
@@ -104,8 +108,16 @@ class TabiiProvider : MainAPI() {
 
     /** Sayfayı indirir, kanalları çıkarır ve önbelleğe yazar; başarısızsa `null`. */
     private suspend fun refresh(): Catalog? {
-        val html = runCatching { app.get(seedUrl, referer = "$mainUrl/").text }.getOrNull()
-            ?: return null
+        // runCatching CancellationException'i da yutardı; dis kapsam iptal edildiginde
+        // iptalin yayilmasi icin try/catch ile ayirt edilir (DirectStreams/AceStream ile
+        // ayni desen).
+        val html = try {
+            app.get(seedUrl, referer = "$mainUrl/").text
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return null
         val tree = NextData.tree(html) ?: return null
         // Logolar sayfada yalnizca dosya adi olarak duruyor; mutlak adres bu
         // taban adresle olusuyor.
