@@ -211,7 +211,16 @@ internal object LogoAssets {
     fun tabiiPosterFor(slug: String, fallback: String?): String? =
         if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
 
-    /** Doğrudan HLS spor kanalı için poster adresi; hazır logo yoksa ham adres. */
-    fun sportsPosterFor(id: String, fallback: String?): String? =
-        if (id in SPORTS_KEYS) BASE + "sports/" + id + ".png" else fallback
+    /** Doğrudan HLS spor kanalı için poster adresi; önbellek varsa yerel, yoksa uzaktan. */
+    fun sportsPosterFor(id: String, fallback: String?): String? {
+        val localPath = System.getProperty("user.dir")
+        val file = java.io.File(localPath, "logos/sports/$id.png")
+        if (!file.exists()) {
+            val alt = java.io.File(localPath.replace("\\", "/"), "TabiiProvider/logos/sports/$id.png")
+            if (alt.exists()) return alt.toURI().toString()
+        } else {
+            return file.toURI().toString()
+        }
+        return if (id in SPORTS_KEYS) BASE + "sports/" + id + ".png" else fallback
+    }
 }
