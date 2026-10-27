@@ -227,17 +227,22 @@ object DirectStreams {
      * sanilmaz). `runCatching` bunu da yakaladigi icin kullanilmiyor.
      */
     private suspend fun hostAlive(host: String, path: String): Boolean {
-        val body = try {
-            withTimeoutOrNull(PROBE_TIMEOUT_MS) {
-                app.get(urlFor(host, path)).text
-            }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            null
-        } ?: return false
-        return isPlaylist(body)
-    }
+    val body = try {
+        withTimeoutOrNull(PROBE_TIMEOUT_MS) {
+            app.get(
+                urlFor(host, path),
+                headers = mapOf(
+                    "User-Agent" to "VLC/3.0.20 LibVLC/3.0.20"
+                )
+            ).text
+        }
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    } ?: return false
+    return isPlaylist(body)
+}
 
     /**
      * `probePath` yolunu sunan ilk calisan makineyi bulur.
