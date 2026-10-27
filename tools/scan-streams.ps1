@@ -80,14 +80,22 @@ Write-Host "== 0/4 DNS-on-HTTPS on tarayisi: $From..$To ==" -ForegroundColor Cya
 $numbers = $From..$To
 $dnsState = $numbers | ForEach-Object -Parallel {
     $n = $_
-    try {
-        $r = Invoke-RestMethod -Uri "https://dns.google/resolve?name=andro.evrenesoglu$n.click&type=A" -TimeoutSec 8
-        $hasRecord = @($r.Answer | Where-Object { $_.type -eq 1 }).Count -gt 0
-        [pscustomobject]@{ N = $n; HasRecord = $hasRecord }
-    } catch {
-        # Sorgu hatasi: aday korunur, HTTP asamasinda gercekten denenir.
-        [pscustomobject]@{ N = $n; HasRecord = $true; DohError = $true }
+    $name = "andro.evrenesoglu$n.click"
+    # Iki bagimsiz DoH saglayicisi: biri engelli/takiliysa digeri devreye girer.
+    foreach ($endpoint in @(
+        "https://dns.google/resolve?name=$name&type=A",
+        "https://cloudflare-dns.com/dns-query?name=$name&type=A"
+    )) {
+        try {
+            $r = Invoke-RestMethod -Uri $endpoint -Headers @{ Accept = 'application/dns-json' } -TimeoutSec 4
+            return [pscustomobject]@{
+                N = $n
+                HasRecord = (@($r.Answer | Where-Object { $_.type -eq 1 }).Count -gt 0)
+            }
+        } catch { continue }
     }
+    # Ikisi de basarisiz: adayi koru, HTTP asamasi gercekten dener.
+    [pscustomobject]@{ N = $n; HasRecord = $true; DohError = $true }
 } -ThrottleLimit $ThrottleLimit
 
 $dnsMissing = @($dnsState | Where-Object { -not $_.HasRecord } | ForEach-Object { $_.N })
@@ -176,21 +184,22 @@ foreach ($v in ($verified | Select-Object -First $SegmentCheckLimit)) {
     try {
         $mp = Invoke-WebRequest -Uri "https://$hostName/$probePath" -UserAgent $UserAgent -TimeoutSec $TimeoutSec
         $segLine = ($mp.Content -split "`n") | Where-Object { $_ -and -not $_.StartsWith("#") } | Select-Object -First 1
-        $segUrl = if ($segLine -match "^https?://") { $segLine.Trim() } else { "https://$hostName/$($segLine.Trim())" }
+        $baseUri = [Uri]"https://$hostName/$probePath"
+        $segUrl = [Uri]::new($baseUri, $segLine.Trim()).AbsoluteUri
         $tmp = New-TemporaryFile
         Invoke-WebRequest -Uri $segUrl -UserAgent $UserAgent -TimeoutSec $TimeoutSec -OutFile $tmp
         $first = [System.IO.File]::ReadAllBytes($tmp)[0]
         Remove-Item $tmp -Force
         if ($first -ne 0x47) {
             Write-Warning "Makine $($v.N): segment MPEG-TS degil (ilk bayt 0x$($first.ToString('X2'))), elendi."
-            $v | Add-Member -NotePropertyName Verified -NotePropertyValue $false
+            $v.Verified = $false
         } else {
             Write-Host ("  {0,-28} segment OK (0x47)" -f $hostName) -ForegroundColor Green
         }
         $checked++
     } catch {
         Write-Warning "Makine $($v.N): segment kontrolu basarisiz ($($_.Exception.Message)), elendi."
-        $v | Add-Member -NotePropertyName Verified -NotePropertyValue $false
+        $v.Verified = $false
     }
 }
 $verified = @($verified | Where-Object Verified)
@@ -216,10 +225,22 @@ if (-not $blockMatch.Success) {
 # Onceki birincil ve liste (degisiklik yoksa tarih korunur).
 $prevPrimary = $null
 if ($raw -match 'const val PRIMARY_HOST = "(?<h>[^"]+)"') { $prevPrimary = $Matches.h }
-$prevHosts = @([regex]::Matches($blockMatch.Value, '"(?<h>andro\.evrenesoglu\d+\.click)"') |
-    ForEach-Object { $_.Groups["h"].Value })
 $prevScan = $null
 if ($raw -match 'const val LAST_SCAN = "(?<d>[^"]+)"') { $prevScan = $Matches.d }
+
+# Yalnizca PREFERRED_HOSTS listesini hedefle; PRIMARY_HOST satirini karistirma.
+# (Blok genelinde ararsak 217 iki kez yakalanir ve liste hep "degismis" gorunur.)
+$listMatch = [regex]::Match($blockMatch.Value,
+    'val PREFERRED_HOSTS: List<String> = listOf\((?<list>.*?)\)',
+    [System.Text.RegularExpressions.RegexOptions]::Singleline)
+if (-not $listMatch.Success) {
+    Write-Host "HATA: PREFERRED_HOSTS listesi bulunamadi: $ProviderFile" -ForegroundColor Red
+    exit 2
+}
+$prevHosts = @([regex]::Matches($listMatch.Groups['list'].Value,
+    '"(?<h>andro\.evrenesoglu\d+\.click)"') |
+    ForEach-Object { $_.Groups['h'].Value } |
+    Select-Object -Unique)
 
 # Onceki birincil hala dogrulanmis makineler arasindaysa korun; yoksa ilk
 # (en kucuk numarali) dogrulanmis makine birincil olur.

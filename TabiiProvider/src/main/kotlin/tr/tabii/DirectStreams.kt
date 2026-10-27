@@ -159,9 +159,14 @@ object DirectStreams {
     /** Ayni anda birden fazla taramayi engeller. */
     private val refreshMutex = Mutex()
 
-    /** Verilen metin gecerli bir HLS oynatma listesi mi? */
+    /**
+     * Verilen metin gecerli bir HLS oynatma listesi mi?
+     *
+     * BOM (U+FEFF) toleransli: `Char.isWhitespace()` BOM'u bosluk saymadigi
+     * icin yalnizca `trimStart()` BOM'lu playlist'i reddederdi.
+     */
     internal fun isPlaylist(body: String): Boolean =
-        body.trimStart().startsWith("#EXTM3U")
+        body.removePrefix("\uFEFF").trimStart().startsWith("#EXTM3U")
 
     /** `andro.evrenesoglu217.click` -> 217; kaliba uymuyorsa `null`. */
     internal fun hostNumber(host: String): Int? =
@@ -204,13 +209,21 @@ object DirectStreams {
      *
      * Sertifika hatalari ve engelleme (403) dahil her tur hata "olu" sayilir;
      * cihaz da ayni sekilde reddedecektir.
+     *
+     * Dikkat: [kotlinx.coroutines.CancellationException] ASLA yutulmaz;
+     * dis kapsam iptal edildiginde iptal yayilmaya devam eder ("olu host"
+     * sanilmaz). `runCatching` bunu da yakaladigi icin kullanilmiyor.
      */
     private suspend fun hostAlive(host: String, path: String): Boolean {
-        val body = runCatching {
+        val body = try {
             withTimeoutOrNull(PROBE_TIMEOUT_MS) {
                 app.get(urlFor(host, path)).text
             }
-        }.getOrNull() ?: return false
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return false
         return isPlaylist(body)
     }
 

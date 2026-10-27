@@ -10,9 +10,16 @@ on:
 permissions:
   contents: write
 
+# Iki tetikleme (schedule + dispatch) ayni anda gelirse tek is calisir;
+# boylece iki isin ayni anda dosyaya yazip push cakismasi olmaz.
+concurrency:
+  group: scan-streams
+  cancel-in-progress: false   # onceki bitene kadar bekle (tarama yarida kalmasin)
+
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15       # asili kalma sigortasi (GitHub varsayilani 360 dk)
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +33,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add TabiiProvider/src/main/kotlin/tr/tabii/DirectStreams.kt
-          if (git diff --cached --quiet) {
+          # PowerShell'de if (native-cmd) ciktisini degil CIKIS KODUNU kontrol et.
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
             Write-Host "Fark yok; liste zaten guncel."
           } else {
             git commit -m "scan: makine listesi guncellendi [skip ci]"
