@@ -37,15 +37,14 @@ object DirectStreams {
         val title: String,
         /** Makineler altinda degismeyen yayin yolu. */
         val path: String,
-        /** `logos/ace/` altindaki logo kimligi. */
+        /** `logos/sports/` altindaki logo kimligi. */
         val logoKey: String,
     )
 
     /**
      * Desteklenen 12 dogrudan spor kanali — tek dogruluk kaynagi.
      *
-     * Eski `aceDirect` / `directAce` listeleri bu tipe indirgendi; kanal
-     * yolu (`path`) hic degismez, yalnizca makine (host) degisir.
+     * Kanal yolu (`path`) hic degismez, yalnizca makine (host) degisir.
      */
     val CHANNELS: List<Channel> = listOf(
         Channel("bein1", "Beinsports-1-Server", "checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
@@ -250,8 +249,7 @@ object DirectStreams {
      */
     internal suspend fun probeBest(probePath: String): String? = coroutineScope {
         val hosts = candidateHosts(PRIMARY_HOST)
-        // Baslangicta baslar: bas paralel (~4 sn) + kuyruk kalan sureyi tuketir
-        // (AceStream.workingAndError ile ayni desen).
+        // Baslangicta baslar: bas paralel (~4 sn) + kuyruk kalan sureyi tuketir.
         val deadline = System.currentTimeMillis() + TOTAL_PROBE_BUDGET_MS
         val head = hosts.take(PARALLEL_LIMIT)
             .map { candidate -> async { candidate to hostAlive(candidate, probePath) } }

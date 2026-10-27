@@ -37,7 +37,7 @@ class DirectStreamsTest {
         for (c in DirectStreams.CHANNELS) {
             assertNotNull(
                 "${c.id}: logo anahtari taninmiyor: ${c.logoKey}",
-                LogoAssets.acePosterFor(c.logoKey, null),
+                LogoAssets.sportsPosterFor(c.logoKey, null),
             )
         }
     }

@@ -196,8 +196,8 @@ if ($failed.Count -gt 0) { "Logo bulunamayanlar: " + ($failed -join ', ') }
 # tabii logolari 1500x1500 kare ama logonun kendisi tuvalin neredeyse
 # tamamini kapliyor; kartta yine kirpiliyor. Ayni guvenli alan kurali uygulanir.
 $tabiiDir = Join-Path $outDir 'tabii'
-$aceDir = Join-Path $outDir 'ace'
-New-Item -ItemType Directory -Force -Path $tabiiDir, $aceDir | Out-Null
+$sportsDir = Join-Path $outDir 'sports'
+New-Item -ItemType Directory -Force -Path $tabiiDir, $sportsDir | Out-Null
 
 function Save-From-Url([string]$url, [string]$path) {
     $tmp = Join-Path $tmpDir ([guid]::NewGuid().ToString('N'))
@@ -239,27 +239,21 @@ if ($next.Success) {
     "tabii: __NEXT_DATA__ bulunamadi"
 }
 
-# --- Ace Stream kanallari ---
-$aceKeys = New-Object System.Collections.Generic.List[string]
-$aceSrc = Get-Content (Join-Path $root 'TabiiProvider/src/main/kotlin/tr/tabii/AceStreamChannels.kt') -Raw
-$aceMatches = [regex]::Matches($aceSrc, 'id\s*=\s*"([^"]+)"[\s\S]{0,1500}?logo\s*=\s*"([^"]+)"')
-$aceFailed = @()
-foreach ($m in $aceMatches) {
-    $key = $m.Groups[1].Value
-    $logoUrl = $m.Groups[2].Value
-    if (Save-From-Url $logoUrl (Join-Path $aceDir "$key.png")) {
-        $aceKeys.Add($key)
-    } else {
-        $aceFailed += $key
-    }
-}
-"Ace Stream logosu: $($aceKeys.Count) / $($aceMatches.Count)"
-if ($aceFailed.Count -gt 0) { "Ace logo bulunamayanlar: " + ($aceFailed -join ', ') }
+# --- Doğrudan HLS spor kanallari ---
+# Kanal tanimlari DirectStreams.CHANNELS icinde; logo anahtarlari (logoKey)
+# oradan okunur. Logo gorselleri sabittir (sponsor CDN'leri kaldirilmis
+# olabileceginden yeniden indirilmez); betik yalnizca anahtarlari LogoAssets
+# icine yazar.
+$sportsKeys = New-Object System.Collections.Generic.List[string]
+$dsSrc = Get-Content (Join-Path $root 'TabiiProvider/src/main/kotlin/tr/tabii/DirectStreams.kt') -Raw
+$dsMatches = [regex]::Matches($dsSrc, 'logoKey\s*=\s*"([^"]+)"')
+foreach ($m in $dsMatches) { $sportsKeys.Add($m.Groups[1].Value) }
+"spor kanali logo anahtari: $($sportsKeys.Count)"
 
 # --- LogoAssets.kt ---
 $keyLines = ($keys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
 $tabiiKeyLines = ($tabiiKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
-$aceKeyLines = ($aceKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
+$sportsKeyLines = ($sportsKeys | ForEach-Object { '        "' + $_ + '",' }) -join "`n"
 $kt = @"
 package tr.tabii
 
@@ -273,9 +267,9 @@ package tr.tabii
  * kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
  *
  * Üç kaynak ayrı klasörlerde tutulur:
- *  - logos/        : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
- *  - logos/tabii/  : tabii kanalları — kanalın slug değeri
- *  - logos/ace/    : Ace Stream kanalları — kanal kimliği
+ *  - logos/         : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
+ *  - logos/tabii/   : tabii kanalları — kanalın slug değeri
+ *  - logos/sports/  : doğrudan HLS spor kanalları — kanal kimliği
  *
  * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham logo adresine
  * düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
@@ -295,9 +289,9 @@ $keyLines
 $tabiiKeyLines
     )
 
-    /** logos/ace/ altında dosyası bulunan Ace Stream kanallarının kimlikleri. */
-    private val ACE_KEYS: Set<String> = setOf(
-$aceKeyLines
+    /** logos/sports/ altında dosyası bulunan doğrudan HLS spor kanallarının kimlikleri. */
+    private val SPORTS_KEYS: Set<String> = setOf(
+$sportsKeyLines
     )
 
     /**
@@ -311,13 +305,13 @@ $aceKeyLines
     fun tabiiPosterFor(slug: String, fallback: String?): String? =
         if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
 
-    /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
-    fun acePosterFor(id: String, fallback: String?): String? =
-        if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
+    /** Doğrudan HLS spor kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun sportsPosterFor(id: String, fallback: String?): String? =
+        if (id in SPORTS_KEYS) BASE + "sports/" + id + ".png" else fallback
 }
 "@
 Set-Content -Path $assetsKt -Value $kt -Encoding UTF8
-"LogoAssets.kt yazildi: $($keys.Count) TR + $($tabiiKeys.Count) tabii + $($aceKeys.Count) Ace anahtar"
+"LogoAssets.kt yazildi: $($keys.Count) TR + $($tabiiKeys.Count) tabii + $($sportsKeys.Count) spor anahtar"
 
 # --- Boyut optimizasyonu ---
 # 512x512 seffaf PNG'ler kart basina onlarca KB tutuyor. Paletli PNG'ye

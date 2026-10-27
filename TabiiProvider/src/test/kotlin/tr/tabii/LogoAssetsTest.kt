@@ -47,11 +47,11 @@ class LogoAssetsTest {
     }
 
     @Test
-    fun `ace stream kanali kimligi ile kendi deposundan poster alir`() {
+    fun `spor kanali kimligi ile kendi deposundan poster alir`() {
         assertEquals(
-            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/ace/bein-sports-hd-1-tr.png",
-            LogoAssets.acePosterFor("bein-sports-hd-1-tr", null),
+            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/sports/bein-sports-hd-1-tr.png",
+            LogoAssets.sportsPosterFor("bein-sports-hd-1-tr", null),
         )
-        assertEquals(null, LogoAssets.acePosterFor("yeni-kanal", null))
+        assertEquals(null, LogoAssets.sportsPosterFor("yeni-kanal", null))
     }
 }

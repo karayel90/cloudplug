@@ -10,9 +10,9 @@ package tr.tabii
  * kırpılmadan göründüğü için logo her iki düzende de tam çıkar.
  *
  * Üç kaynak ayrı klasörlerde tutulur:
- *  - logos/        : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
- *  - logos/tabii/  : tabii kanalları — kanalın slug değeri
- *  - logos/ace/    : Ace Stream kanalları — kanal kimliği
+ *  - logos/         : TR Kanalları (M3U) — kanal adının düzleştirilmiş hâli
+ *  - logos/tabii/   : tabii kanalları — kanalın slug değeri
+ *  - logos/sports/  : doğrudan HLS spor kanalları — kanal kimliği
  *
  * Listede olmayan (ör. M3U'ya sonradan eklenen) kanallar ham logo adresine
  * düşer; yeni kanal için logo üretmek üzere betik yeniden çalıştırılır.
@@ -184,8 +184,8 @@ internal object LogoAssets {
         "tabiispor8",
     )
 
-    /** logos/ace/ altında dosyası bulunan Ace Stream kanallarının kimlikleri. */
-    private val ACE_KEYS: Set<String> = setOf(
+    /** logos/sports/ altında dosyası bulunan doğrudan HLS spor kanallarının kimlikleri. */
+    private val SPORTS_KEYS: Set<String> = setOf(
         "bein-sports-hd-1-tr",
         "bein-sports-hd-2-tr",
         "bein-sports-hd-3-tr",
@@ -211,7 +211,7 @@ internal object LogoAssets {
     fun tabiiPosterFor(slug: String, fallback: String?): String? =
         if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
 
-    /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
-    fun acePosterFor(id: String, fallback: String?): String? =
-        if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
+    /** Doğrudan HLS spor kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun sportsPosterFor(id: String, fallback: String?): String? =
+        if (id in SPORTS_KEYS) BASE + "sports/" + id + ".png" else fallback
 }
