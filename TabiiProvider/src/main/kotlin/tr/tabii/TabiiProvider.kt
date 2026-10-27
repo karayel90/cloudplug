@@ -227,16 +227,20 @@ class TabiiProvider : MainAPI() {
         // bir kez daha dogrular (load ile loadLinks arasinda makine
         // olmus olabilir) ve adresi guncel makineye gosterir.
         DirectStreams.channelByUrl(data)?.let { channel ->
-            val host = DirectStreams.workingHost(channel)
-            val stream = DirectStreams.urlFor(host, channel.path)
-            callback.invoke(
-                newExtractorLink(name, channel.title, stream) {
-                    type = ExtractorLinkType.M3U8
-                    quality = Qualities.Unknown.value
-                }
+    val host = DirectStreams.workingHost(channel)
+    val stream = DirectStreams.urlFor(host, channel.path)
+    callback.invoke(
+        newExtractorLink(name, channel.title, stream) {
+            type = ExtractorLinkType.M3U8
+            quality = Qualities.Unknown.value
+            referer = "https://$host/"
+            headers = mapOf(
+                "User-Agent" to "VLC/3.0.20 LibVLC/3.0.20"
             )
-            return true
         }
+    )
+    return true
+}
 
         // Abonelik gerektiren kanallar için kullanıcının tabii oturumu eklenir.
         val session = storedCredentials?.takeIf { it.isNotBlank() }
