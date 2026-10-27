@@ -184,6 +184,22 @@ internal object LogoAssets {
         "tabiispor8",
     )
 
+    /** logos/ace/ altında dosyası bulunan Ace Stream kanallarının kimlikleri. */
+    private val ACE_KEYS: Set<String> = setOf(
+        "bein-sports-hd-1-tr",
+        "bein-sports-hd-2-tr",
+        "bein-sports-hd-3-tr",
+        "beinsports-4-server",
+        "beinsports-5-server",
+        "s-sport",
+        "s-sport-2",
+        "s-sport-plus",
+        "tivibu-spor-1",
+        "tivibu-spor-2",
+        "tivibu-spor-3",
+        "tivibu-spor-4",
+    )
+
     /** logos/sports/ altında dosyası bulunan doğrudan HLS spor kanallarının kimlikleri. */
     private val SPORTS_KEYS: Set<String> = setOf(
         "bein-sports-1-tr",
@@ -210,6 +226,19 @@ internal object LogoAssets {
     /** tabii kanalı için poster adresi; hazır logo yoksa ham adres. */
     fun tabiiPosterFor(slug: String, fallback: String?): String? =
         if (slug in TABII_KEYS) BASE + "tabii/" + slug + ".png" else fallback
+
+    /** Ace Stream kanalı için poster adresi; hazır logo yoksa ham adres. */
+    fun acePosterFor(id: String, fallback: String?): String? {
+        val localPath = System.getProperty("user.dir")
+        val file = java.io.File(localPath, "logos/ace/$id.png")
+        if (!file.exists()) {
+            val alt = java.io.File(localPath.replace("\\", "/"), "TabiiProvider/logos/ace/$id.png")
+            if (alt.exists()) return alt.toURI().toString()
+        } else {
+            return file.toURI().toString()
+        }
+        return if (id in ACE_KEYS) BASE + "ace/" + id + ".png" else fallback
+    }
 
     /** Doğrudan HLS spor kanalı için poster adresi; önbellek varsa yerel, yoksa uzaktan. */
     fun sportsPosterFor(id: String, fallback: String?): String? {
