@@ -133,27 +133,23 @@ class TabiiProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val channels = fetchChannels()
-        // Her iki satır da yatay kartlarla çizilir; [LogoAssets] logoları kare
-        // tuvale sığdırdığı için kart oranı değişse de logo kırpılmaz.
-        val aceDirect = listOf(
-            Triple("Beinsports-1-Server", "https://andro.evrenesoglu217.click/checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
-            Triple("Beinsports-2-Server", "https://andro.evrenesoglu217.click/checklist/androstreamlivebs2.m3u8", "bein-sports-hd-2-tr"),
-            Triple("Beinsports-3-Server", "https://andro.evrenesoglu217.click/checklist/androstreamlivebs3.m3u8", "bein-sports-hd-3-tr"),
-            Triple("Beinsports-4-Server", "https://andro.evrenesoglu217.click/checklist/androstreamlivebs4.m3u8", "beinsports-4-server"),
-            Triple("Beinsports-5-Server", "https://andro.evrenesoglu217.click/checklist/androstreamlivebs5.m3u8", "beinsports-5-server"),
-            Triple("S Sport", "https://andro.evrenesoglu217.click/checklist/androstreamlivess1.m3u8", "s-sport"),
-            Triple("S Sport 2", "https://andro.evrenesoglu217.click/checklist/androstreamlivess2.m3u8", "s-sport-2"),
-            Triple("S Sport Plus", "https://andro.evrenesoglu217.click/checklist/androstreamlivessplus1.m3u8", "s-sport-plus"),
-            Triple("Tivibu Spor 1", "https://andro.evrenesoglu217.click/checklist/androstreamlivets1.m3u8", "tivibu-spor-1"),
-            Triple("Tivibu Spor 2", "https://andro.evrenesoglu217.click/checklist/androstreamlivets2.m3u8", "tivibu-spor-2"),
-            Triple("Tivibu Spor 3", "https://andro.evrenesoglu217.click/checklist/androstreamlivets3.m3u8", "tivibu-spor-3"),
-            Triple("Tivibu Spor 4", "https://andro.evrenesoglu217.click/checklist/androstreamlivets4.m3u8", "tivibu-spor-4"),
-        )
-        val aceResults = AceStreamChannels.ALL.map { it.toSearchResult() } + aceDirect.map { (t, u, key) ->
-            newLiveSearchResponse(t, u, TvType.Live) {
-                posterUrl = LogoAssets.acePosterFor(key, null)
+        // Her iki satir da yatay kartlarla cizilir; [LogoAssets] logolari
+        // kare tuvale sigidigi icin kart orani degisse de logo kirilmaz.
+        //
+        // Dogrudan HLS kanallari [DirectStreams.CHANNELS] tek kaynagindan
+        // gelir. Buradaki adresteki makine yalnizca tanim amaclidir;
+        // asil cozumleme `load()` ve `loadLinks()` icinde [DirectStreams.workingHost]
+        // ile yapilir, boylece ana sayfa hic ek istek atmaz.
+        val directResults = DirectStreams.CHANNELS.map { channel ->
+            newLiveSearchResponse(
+                channel.title,
+                DirectStreams.urlFor(DirectStreams.PRIMARY_HOST, channel.path),
+                TvType.Live,
+            ) {
+                posterUrl = LogoAssets.acePosterFor(channel.logoKey, null)
             }
         }
+        val aceResults = AceStreamChannels.ALL.map { it.toSearchResult() } + directResults
         return newHomePageResponse(
             listOf(
                 HomePageList(request.name, channels.map { it.toSearchResult() }, true),
@@ -176,29 +172,34 @@ class TabiiProvider : MainAPI() {
         val aceResults = AceStreamChannels.ALL
             .filter { it.name.contains(query, ignoreCase = true) }
             .map { it.toSearchResult() }
-        return tabiiResults + aceResults
+        // Dogrudan HLS kanallari da aranabilir; adresler sabit tanim
+        // amaclidir, makine `load()` icinde cozulur.
+        val directResults = DirectStreams.CHANNELS
+            .filter { it.title.contains(query, ignoreCase = true) }
+            .map { channel ->
+                newLiveSearchResponse(
+                    channel.title,
+                    DirectStreams.urlFor(DirectStreams.PRIMARY_HOST, channel.path),
+                    TvType.Live,
+                ) {
+                    posterUrl = LogoAssets.acePosterFor(channel.logoKey, null)
+                }
+            }
+        return tabiiResults + aceResults + directResults
     }
 
     override suspend fun load(url: String): LoadResponse {
-        // Direct HLS channels in Ace Stream section (Beinsports servers)
-        val directAce = listOf(
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivebs1.m3u8" to "Beinsports-1-Server",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivebs2.m3u8" to "Beinsports-2-Server",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivebs3.m3u8" to "Beinsports-3-Server",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivebs4.m3u8" to "Beinsports-4-Server",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivebs5.m3u8" to "Beinsports-5-Server",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivess1.m3u8" to "S Sport",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivess2.m3u8" to "S Sport 2",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivessplus1.m3u8" to "S Sport Plus",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivets1.m3u8" to "Tivibu Spor 1",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivets2.m3u8" to "Tivibu Spor 2",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivets3.m3u8" to "Tivibu Spor 3",
-            "https://andro.evrenesoglu217.click/checklist/androstreamlivets4.m3u8" to "Tivibu Spor 4",
-        )
-        val directTitle = directAce.firstOrNull { it.first == url }?.second
-        if (directTitle != null) {
-            return newLiveStreamLoadResponse(directTitle, url, url) {
-                plot = "$directTitle — doğrudan HLS yayını"
+        // Direct HLS channels in Ace Stream section (Beinsports servers).
+        // Kanal tanimi yalnizca YOL uzerinden eslesir; makine adi
+        // engelleme sonucu degisebilecegi icin dikkate alinmaz. Burada o
+        // anki calisan makine bulunur ve oynatilabilir adres o makineye
+        // gosterilir.
+        DirectStreams.channelByUrl(url)?.let { channel ->
+            val host = DirectStreams.workingHost(channel)
+            val stream = DirectStreams.urlFor(host, channel.path)
+            return newLiveStreamLoadResponse(channel.title, url, stream) {
+                posterUrl = LogoAssets.acePosterFor(channel.logoKey, null)
+                plot = "${channel.title} — doğrudan HLS yayını"
             }
         }
 
@@ -388,6 +389,21 @@ class TabiiProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        // Dogrudan HLS kanallari: oynatma baslamadan hemen once makineyi
+        // bir kez daha dogrular (load ile loadLinks arasinda makine
+        // olmus olabilir) ve adresi guncel makineye gosterir.
+        DirectStreams.channelByUrl(data)?.let { channel ->
+            val host = DirectStreams.workingHost(channel)
+            val stream = DirectStreams.urlFor(host, channel.path)
+            callback.invoke(
+                newExtractorLink(name, channel.title, stream) {
+                    type = ExtractorLinkType.M3U8
+                    quality = Qualities.Unknown.value
+                }
+            )
+            return true
+        }
+
         // Ace Stream yayinlari motorun yerel HTTP ucundan gelir; ek basliga
         // ihtiyac yoktur.
         if (data.startsWith(AceStream.ENGINE_BASE)) {
