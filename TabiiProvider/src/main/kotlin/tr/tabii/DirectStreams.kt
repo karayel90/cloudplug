@@ -47,11 +47,11 @@ object DirectStreams {
      * Kanal yolu (`path`) hic degismez, yalnizca makine (host) degisir.
      */
     val CHANNELS: List<Channel> = listOf(
-        Channel("bein1", "Beinsports-1-Server", "checklist/androstreamlivebs1.m3u8", "bein-sports-hd-1-tr"),
-        Channel("bein2", "Beinsports-2-Server", "checklist/androstreamlivebs2.m3u8", "bein-sports-hd-2-tr"),
-        Channel("bein3", "Beinsports-3-Server", "checklist/androstreamlivebs3.m3u8", "bein-sports-hd-3-tr"),
-        Channel("bein4", "Beinsports-4-Server", "checklist/androstreamlivebs4.m3u8", "beinsports-4-server"),
-        Channel("bein5", "Beinsports-5-Server", "checklist/androstreamlivebs5.m3u8", "beinsports-5-server"),
+        Channel("bein1", "beIN SPORTS 1", "checklist/androstreamlivebs1.m3u8", "bein-sports-1-tr"),
+        Channel("bein2", "beIN SPORTS 2", "checklist/androstreamlivebs2.m3u8", "bein-sports-2-tr"),
+        Channel("bein3", "beIN SPORTS 3", "checklist/androstreamlivebs3.m3u8", "bein-sports-3-tr"),
+        Channel("bein4", "beIN SPORTS 4", "checklist/androstreamlivebs4.m3u8", "bein-sports-4"),
+        Channel("bein5", "beIN SPORTS 5", "checklist/androstreamlivebs5.m3u8", "bein-sports-5"),
         Channel("ssport", "S Sport", "checklist/androstreamlivess1.m3u8", "s-sport"),
         Channel("ssport2", "S Sport 2", "checklist/androstreamlivess2.m3u8", "s-sport-2"),
         Channel("ssportplus", "S Sport Plus", "checklist/androstreamlivessplus1.m3u8", "s-sport-plus"),

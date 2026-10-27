@@ -49,8 +49,8 @@ class LogoAssetsTest {
     @Test
     fun `spor kanali kimligi ile kendi deposundan poster alir`() {
         assertEquals(
-            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/sports/bein-sports-hd-1-tr.png",
-            LogoAssets.sportsPosterFor("bein-sports-hd-1-tr", null),
+            "https://raw.githubusercontent.com/karayel90/cloudplug/main/logos/sports/bein-sports-1-tr.png",
+            LogoAssets.sportsPosterFor("bein-sports-1-tr", null),
         )
         assertEquals(null, LogoAssets.sportsPosterFor("yeni-kanal", null))
     }

@@ -186,11 +186,11 @@ internal object LogoAssets {
 
     /** logos/sports/ altında dosyası bulunan doğrudan HLS spor kanallarının kimlikleri. */
     private val SPORTS_KEYS: Set<String> = setOf(
-        "bein-sports-hd-1-tr",
-        "bein-sports-hd-2-tr",
-        "bein-sports-hd-3-tr",
-        "beinsports-4-server",
-        "beinsports-5-server",
+        "bein-sports-1-tr",
+        "bein-sports-2-tr",
+        "bein-sports-3-tr",
+        "bein-sports-4",
+        "bein-sports-5",
         "s-sport",
         "s-sport-2",
         "s-sport-plus",
