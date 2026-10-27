@@ -211,14 +211,14 @@ Write-Host "  dogrulanmis makine: $($verified.Count) (segment kontrol edilen: $c
 
 # --- DirectStreams.kt blogunu yenile ---------------------------------------
 if (-not (Test-Path $ProviderFile)) {
-    Write-Error "Dosya bulunamadi: $ProviderFile"
+    Write-Host "HATA: Dosya bulunamadi: $ProviderFile" -ForegroundColor Red
     exit 2
 }
 $raw = Get-Content -Raw $ProviderFile
 $pattern = '(?s)(?<=// >>> scan-streams:BEGIN\r?\n).*?(?=// <<< scan-streams:END)'
 $blockMatch = [regex]::Match($raw, $pattern)
 if (-not $blockMatch.Success) {
-    Write-Error "scan-streams blogu bulunamadi: $ProviderFile"
+    Write-Host "HATA: scan-streams blogu bulunamadi: $ProviderFile" -ForegroundColor Red
     exit 2
 }
 
